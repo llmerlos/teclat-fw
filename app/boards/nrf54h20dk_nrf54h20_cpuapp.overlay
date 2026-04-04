@@ -10,7 +10,7 @@
 	leds0 {
 		compatible = "gpio-leds";
 		led0: led_0 {
-			gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio9 0 GPIO_ACTIVE_HIGH>;
 			label = "Green LED 0";
 		};
 	};
@@ -18,7 +18,7 @@
 	leds1 {
 		compatible = "gpio-leds";
 		led1: led_1 {
-			gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio9 1 GPIO_ACTIVE_HIGH>;
 			label = "Green LED 1";
 		};
 	};
@@ -26,7 +26,7 @@
 	leds2 {
 		compatible = "gpio-leds";
 		led2: led_2 {
-			gpios = <&gpio2 7 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio9 2 GPIO_ACTIVE_HIGH>;
 			label = "Green LED 2";
 		};
 	};
@@ -34,7 +34,7 @@
 	leds3 {
 		compatible = "gpio-leds";
 		led3: led_3 {
-			gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio9 3 GPIO_ACTIVE_HIGH>;
 			label = "Green LED 3";
 		};
 	};

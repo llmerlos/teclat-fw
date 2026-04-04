@@ -6,6 +6,10 @@
 # You can browse these options using the west targets menuconfig (terminal) or
 # guiconfig (GUI).
 
+menu "Common Application Framework sample"
+rsource "src/modules/Kconfig"
+endmenu
+
 menu "Zephyr"
 source "Kconfig.zephyr"
 endmenu
