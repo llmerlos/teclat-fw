@@ -23,7 +23,7 @@ int main(void)
 	const struct device *sensor, *blink;
 	struct sensor_value last_val = { 0 }, val;
 
-	printk("Zephyr Example Application %s\n", APP_VERSION_STRING);
+	LOG_INF("Zephyr Example Application %s", APP_VERSION_STRING);
 
 	sensor = DEVICE_DT_GET(DT_NODELABEL(example_sensor));
 	if (!device_is_ready(sensor)) {
@@ -43,7 +43,7 @@ int main(void)
 		return 0;
 	}
 
-	printk("Use the sensor to change LED blinking period\n");
+	LOG_INF("Use the sensor to change LED blinking period");
 
 	while (1) {
 		ret = sensor_sample_fetch(sensor);
@@ -65,13 +65,13 @@ int main(void)
 				period_ms -= BLINK_PERIOD_MS_STEP;
 			}
 
-			printk("Proximity detected, setting LED period to %u ms\n",
+			LOG_INF("Proximity detected, setting LED period to %u ms",
 			       period_ms);
 			blink_set_period_ms(blink, period_ms);
 		}
 
 		last_val = val;
-
+	
 		k_sleep(K_MSEC(100));
 	}
 
