@@ -11,6 +11,8 @@
 
 #include <app_version.h>
 
+#include <app_event_manager.h>
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 #define BLINK_PERIOD_MS_STEP 100U
@@ -21,9 +23,17 @@ int main(void)
 	int ret;
 	unsigned int period_ms = BLINK_PERIOD_MS_MAX;
 	const struct device *sensor, *blink;
-	struct sensor_value last_val = { 0 }, val;
+	struct sensor_value last_val = {0}, val;
 
 	LOG_INF("Zephyr Example Application %s", APP_VERSION_STRING);
+
+	ret = app_event_manager_init();
+	if (ret < 0) {
+		LOG_ERR("Could not initialize event manager (%d)", ret);
+		return 0;
+	}
+
+	// random shit
 
 	sensor = DEVICE_DT_GET(DT_NODELABEL(example_sensor));
 	if (!device_is_ready(sensor)) {
@@ -65,16 +75,14 @@ int main(void)
 				period_ms -= BLINK_PERIOD_MS_STEP;
 			}
 
-			LOG_INF("Proximity detected, setting LED period to %u ms",
-			       period_ms);
+			LOG_INF("Proximity detected, setting LED period to %u ms", period_ms);
 			blink_set_period_ms(blink, period_ms);
 		}
 
 		last_val = val;
-	
+
 		k_sleep(K_MSEC(100));
 	}
 
 	return 0;
 }
-
