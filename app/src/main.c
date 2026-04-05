@@ -11,7 +11,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
 
-
 int main(void)
 {
 	if (app_event_manager_init()) {

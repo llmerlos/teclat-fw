@@ -1,0 +1,14 @@
+{
+    "nrf-connect.applications": [
+        "${workspaceFolder}/app"
+    ],
+    "clangd.arguments": [
+        "--pretty",
+        "--enable-config",
+        "--background-index",
+        "--compile-commands-dir=${workspaceFolder}/app/build/app",
+        "--query-driver=C:/ncs/toolchains/fd21892d0f/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-*",
+        // "--log=verbose",
+        "--log=error"
+    ],
+}
