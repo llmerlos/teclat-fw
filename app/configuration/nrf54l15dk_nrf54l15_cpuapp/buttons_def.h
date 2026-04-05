@@ -13,11 +13,13 @@
 /* This structure enforces the header file is included only once in the build.
  * Violating this requirement triggers a multiple definition error at link time.
  */
-const struct {} buttons_def_include_once;
+const struct {
+} buttons_def_include_once;
 
 static const struct gpio_pin col[] = {};
 
 static const struct gpio_pin row[] = {
-	{ .port = 0, .pin = DT_GPIO_PIN(DT_NODELABEL(button0), gpios) },
-	{ .port = 0, .pin = DT_GPIO_PIN(DT_NODELABEL(button1), gpios) }
-};
+	{.port = DT_PROP(DT_GPIO_CTLR(DT_NODELABEL(button0), gpios), port),
+	 .pin = DT_GPIO_PIN(DT_NODELABEL(button0), gpios)},
+	{.port = DT_PROP(DT_GPIO_CTLR(DT_NODELABEL(button1), gpios), port),
+	 .pin = DT_GPIO_PIN(DT_NODELABEL(button1), gpios)}};

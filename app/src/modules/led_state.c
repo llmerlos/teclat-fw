@@ -6,7 +6,7 @@
 
 #include <zephyr/kernel.h>
 
-#define MODULE leds
+#define MODULE leds_state
 #include <caf/events/module_state_event.h>
 #include <caf/events/led_event.h>
 #include <caf/events/button_event.h>
@@ -15,7 +15,6 @@
 LOG_MODULE_REGISTER(MODULE);
 
 #include "led_state_def.h"
-
 
 enum button_id {
 	BUTTON_ID_NEXT_EFFECT,
@@ -26,7 +25,6 @@ enum button_id {
 
 static enum led_effect_id curr_led_effect_id[LED_ID_COUNT];
 static enum led_id curr_led_id;
-
 
 static void send_led_event(enum led_id led_id, const struct led_effect *led_effect)
 {
