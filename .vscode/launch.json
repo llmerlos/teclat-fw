@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch",
+            "device": "NRF54L15_M33",
+            "cwd": "${workspaceFolder}/",
+            "executable": "build/app/zephyr/zephyr.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "toolchainPrefix": "arm-zephyr-eabi",
+            "toolchainPath": "/home/lluis/ncs/toolchains/2ac5840438/opt/zephyr-sdk/arm-zephyr-eabi/bin",
+            "runToEntryPoint": "main",
+            "servertype": "jlink",
+            "overrideLaunchCommands": [
+                "monitor halt",
+                "monitor reset",
+                "load",
+            ],
+        },
+    ],
+}
