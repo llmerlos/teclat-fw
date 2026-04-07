@@ -1,5 +1,5 @@
 CompileFlags:
-  CompilationDatabase: app/build/app/      # Search build/ directory for compile_commands.json
+  CompilationDatabase: build/app/      # Search build/ directory for compile_commands.json
   Add: -Wno-unknown-warning-option
   Remove: [-mfp16-format=ieee, -fno-reorder-functions, -fno-printf-return-value ]
 Diagnostics:
