@@ -19,3 +19,20 @@ module-str = caf sample led state
 source "subsys/logging/Kconfig.template.log_config"
 
 endif # CAF_SAMPLE_LED_STATE
+
+config CAF_MY_KEYMAP
+	bool "Converts button events to HID"
+	depends on CAF_BUTTON_EVENTS
+	depends on CAF_LED_EVENTS
+	help
+	  If enabled, the application specific, converts the button presses
+	  to keycodes
+
+if CAF_MY_KEYMAP
+
+module = CAF_MY_KEYMAP
+module-str = caf my keymap
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # CAF_MY_KEYMAP
+

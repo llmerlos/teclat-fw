@@ -24,3 +24,7 @@ zephyr_include_directories(
 
 target_sources_ifdef(CONFIG_CAF_SAMPLE_LED_STATE
   app PRIVATE src/modules/led_state.c)
+
+
+target_sources_ifdef(CONFIG_CAF_MY_KEYMAP
+  app PRIVATE src/modules/keymap.c)
