@@ -19,7 +19,6 @@ target_sources(app PRIVATE
 
 target_include_directories(app PRIVATE src)
 
-# target_compile_options(app PRIVATE -Wall -Wextra -Werror)
-target_compile_options(app PRIVATE -Wall -Wextra)
+target_compile_options(app PRIVATE -Wall -Wextra -Werror)
 
 # NORDIC SDK APP END

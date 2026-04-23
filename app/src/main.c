@@ -34,7 +34,7 @@
 #define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
-#define BASE_USB_HID_SPEC_VERSION   0x0101
+#define BASE_USB_HID_SPEC_VERSION 0x0101
 
 #define OUTPUT_REPORT_MAX_LEN            1
 #define OUTPUT_REPORT_BIT_MASK_CAPS_LOCK 0x02
@@ -43,15 +43,14 @@
 #define MODIFIER_KEY_POS                 0
 #define SHIFT_KEY_CODE                   0x02
 #define SCAN_CODE_POS                    2
-#define KEYS_MAX_LEN                    (INPUT_REPORT_KEYS_MAX_LEN - \
-					SCAN_CODE_POS)
+#define KEYS_MAX_LEN                     (INPUT_REPORT_KEYS_MAX_LEN - SCAN_CODE_POS)
 
-#define ADV_LED_BLINK_INTERVAL  1000
+#define ADV_LED_BLINK_INTERVAL 1000
 
 #define ADV_STATUS_LED DK_LED1
 #define CON_STATUS_LED DK_LED2
 #define LED_CAPS_LOCK  DK_LED3
-#define NFC_LED	       DK_LED4
+#define NFC_LED        DK_LED4
 #define KEY_TEXT_MASK  DK_BTN1_MSK
 #define KEY_SHIFT_MASK DK_BTN2_MSK
 #define KEY_ADV_MASK   DK_BTN4_MSK
@@ -75,9 +74,10 @@
 #define KEY_CTRL_CODE_MAX 231 /* Control key codes - required 8 of them */
 #define KEY_CODE_MIN      0   /* Normal key codes */
 #define KEY_CODE_MAX      101 /* Normal key codes */
-#define KEY_PRESS_MAX     6   /* Maximum number of non-control keys
-			       * pressed simultaneously
-			       */
+#define KEY_PRESS_MAX                                                                              \
+	6 /* Maximum number of non-control keys                                                    \
+	   * pressed simultaneously                                                                \
+	   */
 
 /* Number of bytes in key report
  *
@@ -109,19 +109,16 @@ enum {
 };
 
 /* HIDS instance. */
-BT_HIDS_DEF(hids_obj,
-	    OUTPUT_REPORT_MAX_LEN,
-	    INPUT_REPORT_KEYS_MAX_LEN);
+BT_HIDS_DEF(hids_obj, OUTPUT_REPORT_MAX_LEN, INPUT_REPORT_KEYS_MAX_LEN);
 
 static volatile bool is_adv;
 
 static const struct bt_data ad[] = {
-	BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE,
-		      (CONFIG_BT_DEVICE_APPEARANCE >> 0) & 0xff,
+	BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE, (CONFIG_BT_DEVICE_APPEARANCE >> 0) & 0xff,
 		      (CONFIG_BT_DEVICE_APPEARANCE >> 8) & 0xff),
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
 	BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(BT_UUID_HIDS_VAL),
-					  BT_UUID_16_ENCODE(BT_UUID_BAS_VAL)),
+		      BT_UUID_16_ENCODE(BT_UUID_BAS_VAL)),
 };
 
 static const struct bt_data sd[] = {
@@ -134,15 +131,15 @@ static struct conn_mode {
 } conn_mode[CONFIG_BT_HIDS_MAX_CLIENT_COUNT];
 
 static const uint8_t hello_world_str[] = {
-	0x0b,	/* Key h */
-	0x08,	/* Key e */
-	0x0f,	/* Key l */
-	0x0f,	/* Key l */
-	0x12,	/* Key o */
-	0x28,	/* Key Return */
+	0x0b, /* Key h */
+	0x08, /* Key e */
+	0x0f, /* Key l */
+	0x0f, /* Key l */
+	0x12, /* Key o */
+	0x28, /* Key Return */
 };
 
-static const uint8_t shift_key[] = { 225 };
+static const uint8_t shift_key[] = {225};
 
 /* Current report status
  */
@@ -161,22 +158,15 @@ struct pairing_data_mitm {
 	unsigned int passkey;
 };
 
-K_MSGQ_DEFINE(mitm_queue,
-	      sizeof(struct pairing_data_mitm),
-	      CONFIG_BT_HIDS_MAX_CLIENT_COUNT,
-	      4);
+K_MSGQ_DEFINE(mitm_queue, sizeof(struct pairing_data_mitm), CONFIG_BT_HIDS_MAX_CLIENT_COUNT, 4);
 
 static void advertising_start(void)
 {
 	int err;
 	const struct bt_le_adv_param *adv_param = BT_LE_ADV_PARAM(
-						BT_LE_ADV_OPT_CONN,
-						BT_GAP_ADV_FAST_INT_MIN_2,
-						BT_GAP_ADV_FAST_INT_MAX_2,
-						NULL);
+		BT_LE_ADV_OPT_CONN, BT_GAP_ADV_FAST_INT_MIN_2, BT_GAP_ADV_FAST_INT_MAX_2, NULL);
 
-	err = bt_le_adv_start(adv_param, ad, ARRAY_SIZE(ad), sd,
-			      ARRAY_SIZE(sd));
+	err = bt_le_adv_start(adv_param, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 	if (err) {
 		if (err == -EALREADY) {
 			printk("Advertising continued\n");
@@ -191,13 +181,12 @@ static void advertising_start(void)
 	printk("Advertising successfully started\n");
 }
 
-
 #if CONFIG_NFC_OOB_PAIRING
 static void delayed_advertising_start(struct k_work *work)
 {
+	ARG_UNUSED(work);
 	advertising_start();
 }
-
 
 void nfc_field_detected(void)
 {
@@ -211,16 +200,15 @@ void nfc_field_detected(void)
 	}
 }
 
-
 void nfc_field_lost(void)
 {
 	dk_set_led_off(NFC_LED);
 }
 #endif
 
-
 static void pairing_process(struct k_work *work)
 {
+	ARG_UNUSED(work);
 	int err;
 	struct pairing_data_mitm pairing_data;
 
@@ -231,8 +219,7 @@ static void pairing_process(struct k_work *work)
 		return;
 	}
 
-	bt_addr_le_to_str(bt_conn_get_dst(pairing_data.conn),
-			  addr, sizeof(addr));
+	bt_addr_le_to_str(bt_conn_get_dst(pairing_data.conn), addr, sizeof(addr));
 
 	printk("Passkey for %s: %06u\n", addr, pairing_data.passkey);
 
@@ -242,7 +229,6 @@ static void pairing_process(struct k_work *work)
 		printk("Press Button 1 to confirm, Button 2 to reject.\n");
 	}
 }
-
 
 static void connected(struct bt_conn *conn, uint8_t err)
 {
@@ -283,7 +269,6 @@ static void connected(struct bt_conn *conn, uint8_t err)
 #endif
 	is_adv = false;
 }
-
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
@@ -326,9 +311,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 #endif
 }
 
-
-static void security_changed(struct bt_conn *conn, bt_security_t level,
-			     enum bt_security_err err)
+static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -348,18 +331,13 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
 	.security_changed = security_changed,
 };
 
-
 static void caps_lock_handler(const struct bt_hids_rep *rep)
 {
-	uint8_t report_val = ((*rep->data) & OUTPUT_REPORT_BIT_MASK_CAPS_LOCK) ?
-			  1 : 0;
+	uint8_t report_val = ((*rep->data) & OUTPUT_REPORT_BIT_MASK_CAPS_LOCK) ? 1 : 0;
 	dk_set_led(LED_CAPS_LOCK, report_val);
 }
 
-
-static void hids_outp_rep_handler(struct bt_hids_rep *rep,
-				  struct bt_conn *conn,
-				  bool write)
+static void hids_outp_rep_handler(struct bt_hids_rep *rep, struct bt_conn *conn, bool write)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -373,10 +351,7 @@ static void hids_outp_rep_handler(struct bt_hids_rep *rep,
 	caps_lock_handler(rep);
 }
 
-
-static void hids_boot_kb_outp_rep_handler(struct bt_hids_rep *rep,
-					  struct bt_conn *conn,
-					  bool write)
+static void hids_boot_kb_outp_rep_handler(struct bt_hids_rep *rep, struct bt_conn *conn, bool write)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -390,9 +365,7 @@ static void hids_boot_kb_outp_rep_handler(struct bt_hids_rep *rep,
 	caps_lock_handler(rep);
 }
 
-
-static void hids_pm_evt_handler(enum bt_hids_pm_evt evt,
-				struct bt_conn *conn)
+static void hids_pm_evt_handler(enum bt_hids_pm_evt evt, struct bt_conn *conn)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 	size_t i;
@@ -426,62 +399,61 @@ static void hids_pm_evt_handler(enum bt_hids_pm_evt evt,
 	}
 }
 
-
 static void hid_init(void)
 {
 	int err;
-	struct bt_hids_init_param    hids_init_obj = { 0 };
-	struct bt_hids_inp_rep       *hids_inp_rep;
+	struct bt_hids_init_param hids_init_obj = {0};
+	struct bt_hids_inp_rep *hids_inp_rep;
 	struct bt_hids_outp_feat_rep *hids_outp_rep;
 
 	static const uint8_t report_map[] = {
-		0x05, 0x01,       /* Usage Page (Generic Desktop) */
-		0x09, 0x06,       /* Usage (Keyboard) */
-		0xA1, 0x01,       /* Collection (Application) */
+		0x05, 0x01, /* Usage Page (Generic Desktop) */
+		0x09, 0x06, /* Usage (Keyboard) */
+		0xA1, 0x01, /* Collection (Application) */
 
-		/* Keys */
+	/* Keys */
 #if INPUT_REP_KEYS_REF_ID
 		0x85, INPUT_REP_KEYS_REF_ID,
 #endif
-		0x05, 0x07,       /* Usage Page (Key Codes) */
-		0x19, 0xe0,       /* Usage Minimum (224) */
-		0x29, 0xe7,       /* Usage Maximum (231) */
-		0x15, 0x00,       /* Logical Minimum (0) */
-		0x25, 0x01,       /* Logical Maximum (1) */
-		0x75, 0x01,       /* Report Size (1) */
-		0x95, 0x08,       /* Report Count (8) */
-		0x81, 0x02,       /* Input (Data, Variable, Absolute) */
+		0x05, 0x07, /* Usage Page (Key Codes) */
+		0x19, 0xe0, /* Usage Minimum (224) */
+		0x29, 0xe7, /* Usage Maximum (231) */
+		0x15, 0x00, /* Logical Minimum (0) */
+		0x25, 0x01, /* Logical Maximum (1) */
+		0x75, 0x01, /* Report Size (1) */
+		0x95, 0x08, /* Report Count (8) */
+		0x81, 0x02, /* Input (Data, Variable, Absolute) */
 
-		0x95, 0x01,       /* Report Count (1) */
-		0x75, 0x08,       /* Report Size (8) */
-		0x81, 0x01,       /* Input (Constant) reserved byte(1) */
+		0x95, 0x01, /* Report Count (1) */
+		0x75, 0x08, /* Report Size (8) */
+		0x81, 0x01, /* Input (Constant) reserved byte(1) */
 
-		0x95, 0x06,       /* Report Count (6) */
-		0x75, 0x08,       /* Report Size (8) */
-		0x15, 0x00,       /* Logical Minimum (0) */
-		0x25, 0x65,       /* Logical Maximum (101) */
-		0x05, 0x07,       /* Usage Page (Key codes) */
-		0x19, 0x00,       /* Usage Minimum (0) */
-		0x29, 0x65,       /* Usage Maximum (101) */
-		0x81, 0x00,       /* Input (Data, Array) Key array(6 bytes) */
+		0x95, 0x06, /* Report Count (6) */
+		0x75, 0x08, /* Report Size (8) */
+		0x15, 0x00, /* Logical Minimum (0) */
+		0x25, 0x65, /* Logical Maximum (101) */
+		0x05, 0x07, /* Usage Page (Key codes) */
+		0x19, 0x00, /* Usage Minimum (0) */
+		0x29, 0x65, /* Usage Maximum (101) */
+		0x81, 0x00, /* Input (Data, Array) Key array(6 bytes) */
 
-		/* LED */
+	/* LED */
 #if OUTPUT_REP_KEYS_REF_ID
 		0x85, OUTPUT_REP_KEYS_REF_ID,
 #endif
-		0x95, 0x05,       /* Report Count (5) */
-		0x75, 0x01,       /* Report Size (1) */
-		0x05, 0x08,       /* Usage Page (Page# for LEDs) */
-		0x19, 0x01,       /* Usage Minimum (1) */
-		0x29, 0x05,       /* Usage Maximum (5) */
-		0x91, 0x02,       /* Output (Data, Variable, Absolute), */
-				  /* Led report */
-		0x95, 0x01,       /* Report Count (1) */
-		0x75, 0x03,       /* Report Size (3) */
-		0x91, 0x01,       /* Output (Data, Variable, Absolute), */
-				  /* Led report padding */
+		0x95, 0x05, /* Report Count (5) */
+		0x75, 0x01, /* Report Size (1) */
+		0x05, 0x08, /* Usage Page (Page# for LEDs) */
+		0x19, 0x01, /* Usage Minimum (1) */
+		0x29, 0x05, /* Usage Maximum (5) */
+		0x91, 0x02, /* Output (Data, Variable, Absolute), */
+			    /* Led report */
+		0x95, 0x01, /* Report Count (1) */
+		0x75, 0x03, /* Report Size (3) */
+		0x91, 0x01, /* Output (Data, Variable, Absolute), */
+			    /* Led report padding */
 
-		0xC0              /* End Collection (Application) */
+		0xC0 /* End Collection (Application) */
 	};
 
 	hids_init_obj.rep_map.data = report_map;
@@ -489,17 +461,14 @@ static void hid_init(void)
 
 	hids_init_obj.info.bcd_hid = BASE_USB_HID_SPEC_VERSION;
 	hids_init_obj.info.b_country_code = 0x00;
-	hids_init_obj.info.flags = (BT_HIDS_REMOTE_WAKE |
-				    BT_HIDS_NORMALLY_CONNECTABLE);
+	hids_init_obj.info.flags = (BT_HIDS_REMOTE_WAKE | BT_HIDS_NORMALLY_CONNECTABLE);
 
-	hids_inp_rep =
-		&hids_init_obj.inp_rep_group_init.reports[INPUT_REP_KEYS_IDX];
+	hids_inp_rep = &hids_init_obj.inp_rep_group_init.reports[INPUT_REP_KEYS_IDX];
 	hids_inp_rep->size = INPUT_REPORT_KEYS_MAX_LEN;
 	hids_inp_rep->id = INPUT_REP_KEYS_REF_ID;
 	hids_init_obj.inp_rep_group_init.cnt++;
 
-	hids_outp_rep =
-		&hids_init_obj.outp_rep_group_init.reports[OUTPUT_REP_KEYS_IDX];
+	hids_outp_rep = &hids_init_obj.outp_rep_group_init.reports[OUTPUT_REP_KEYS_IDX];
 	hids_outp_rep->size = OUTPUT_REPORT_MAX_LEN;
 	hids_outp_rep->id = OUTPUT_REP_KEYS_REF_ID;
 	hids_outp_rep->handler = hids_outp_rep_handler;
@@ -528,7 +497,7 @@ static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
 
 	struct pairing_data_mitm pairing_data;
 
-	pairing_data.conn    = bt_conn_ref(conn);
+	pairing_data.conn = bt_conn_ref(conn);
 	pairing_data.passkey = passkey;
 
 	err = k_msgq_put(&mitm_queue, &pairing_data, K_NO_WAIT);
@@ -547,7 +516,6 @@ static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
 	}
 }
 
-
 static void auth_cancel(struct bt_conn *conn)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
@@ -557,10 +525,8 @@ static void auth_cancel(struct bt_conn *conn)
 	printk("Pairing cancelled: %s\n", addr);
 }
 
-
 #if CONFIG_NFC_OOB_PAIRING
-static void auth_oob_data_request(struct bt_conn *conn,
-				  struct bt_conn_oob_info *info)
+static void auth_oob_data_request(struct bt_conn *conn, struct bt_conn_oob_info *info)
 {
 	int err;
 	struct bt_le_oob *oob_local = app_nfc_oob_data_get();
@@ -587,7 +553,6 @@ static void auth_oob_data_request(struct bt_conn *conn,
 }
 #endif
 
-
 static void pairing_complete(struct bt_conn *conn, bool bonded)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
@@ -596,7 +561,6 @@ static void pairing_complete(struct bt_conn *conn, bool bonded)
 
 	printk("Pairing completed: %s, bonded: %d\n", addr, bonded);
 }
-
 
 static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 {
@@ -627,11 +591,8 @@ static struct bt_conn_auth_cb conn_auth_callbacks = {
 #endif
 };
 
-static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
-	.pairing_complete = pairing_complete,
-	.pairing_failed = pairing_failed
-};
-
+static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {.pairing_complete = pairing_complete,
+							       .pairing_failed = pairing_failed};
 
 /** @brief Function process keyboard state and sends it
  *
@@ -641,12 +602,11 @@ static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
  *
  *  @return 0 on success or negative error code.
  */
-static int key_report_con_send(const struct keyboard_state *state,
-			bool boot_mode,
-			struct bt_conn *conn)
+static int key_report_con_send(const struct keyboard_state *state, bool boot_mode,
+			       struct bt_conn *conn)
 {
 	int err = 0;
-	uint8_t  data[INPUT_REPORT_KEYS_MAX_LEN];
+	uint8_t data[INPUT_REPORT_KEYS_MAX_LEN];
 	uint8_t *key_data;
 	const uint8_t *key_state;
 	size_t n;
@@ -660,12 +620,10 @@ static int key_report_con_send(const struct keyboard_state *state,
 		*key_data++ = *key_state++;
 	}
 	if (boot_mode) {
-		err = bt_hids_boot_kb_inp_rep_send(&hids_obj, conn, data,
-							sizeof(data), NULL);
+		err = bt_hids_boot_kb_inp_rep_send(&hids_obj, conn, data, sizeof(data), NULL);
 	} else {
-		err = bt_hids_inp_rep_send(&hids_obj, conn,
-						INPUT_REP_KEYS_IDX, data,
-						sizeof(data), NULL);
+		err = bt_hids_inp_rep_send(&hids_obj, conn, INPUT_REP_KEYS_IDX, data, sizeof(data),
+					   NULL);
 	}
 	return err;
 }
@@ -683,8 +641,7 @@ static int key_report_send(void)
 		if (conn_mode[i].conn) {
 			int err;
 
-			err = key_report_con_send(&hid_keyboard_state,
-						  conn_mode[i].in_boot_mode,
+			err = key_report_con_send(&hid_keyboard_state, conn_mode[i].in_boot_mode,
 						  conn_mode[i].conn);
 			if (err) {
 				printk("Key report send error: %d\n", err);
@@ -713,7 +670,6 @@ static uint8_t button_ctrl_code(uint8_t key)
 	return 0;
 }
 
-
 static int hid_kbd_state_key_set(uint8_t key)
 {
 	uint8_t ctrl_mask = button_ctrl_code(key);
@@ -731,7 +687,6 @@ static int hid_kbd_state_key_set(uint8_t key)
 	/* All slots busy */
 	return -EBUSY;
 }
-
 
 static int hid_kbd_state_key_clear(uint8_t key)
 {
@@ -797,7 +752,6 @@ static int hid_buttons_release(const uint8_t *keys, size_t cnt)
 	return key_report_send();
 }
 
-
 static void button_text_changed(bool down)
 {
 	static const uint8_t *chr = hello_world_str;
@@ -812,7 +766,6 @@ static void button_text_changed(bool down)
 	}
 }
 
-
 static void button_shift_changed(bool down)
 {
 	if (down) {
@@ -821,7 +774,6 @@ static void button_shift_changed(bool down)
 		hid_buttons_release(shift_key, 1);
 	}
 }
-
 
 static void num_comp_reply(bool accept)
 {
@@ -849,7 +801,6 @@ static void num_comp_reply(bool accept)
 	}
 }
 
-
 static void button_changed(uint32_t button_state, uint32_t has_changed)
 {
 	static bool pairing_button_pressed;
@@ -873,8 +824,7 @@ static void button_changed(uint32_t button_state, uint32_t has_changed)
 	}
 
 	/* Do not take any action if the pairing button is released. */
-	if (pairing_button_pressed &&
-	    (has_changed & (KEY_PAIRING_ACCEPT | KEY_PAIRING_REJECT))) {
+	if (pairing_button_pressed && (has_changed & (KEY_PAIRING_ACCEPT | KEY_PAIRING_REJECT))) {
 		pairing_button_pressed = false;
 
 		return;
@@ -903,7 +853,6 @@ static void button_changed(uint32_t button_state, uint32_t has_changed)
 #endif
 }
 
-
 static void configure_gpio(void)
 {
 	int err;
@@ -919,7 +868,6 @@ static void configure_gpio(void)
 	}
 }
 
-
 static void bas_notify(void)
 {
 	uint8_t battery_level = bt_bas_get_battery_level();
@@ -932,7 +880,6 @@ static void bas_notify(void)
 
 	bt_bas_set_battery_level(battery_level);
 }
-
 
 int main(void)
 {
