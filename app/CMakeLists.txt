@@ -14,17 +14,12 @@ project(NONE)
 # NORDIC SDK APP START
 target_sources(app PRIVATE
   src/main.c
+  src/app_nfc.c
 )
+
+target_include_directories(app PRIVATE src)
+
+# target_compile_options(app PRIVATE -Wall -Wextra -Werror)
+target_compile_options(app PRIVATE -Wall -Wextra)
+
 # NORDIC SDK APP END
-
-# Add include directory for board specific CAF def files
-zephyr_include_directories(
-  configuration/${NORMALIZED_BOARD_TARGET}
-  )
-
-target_sources_ifdef(CONFIG_CAF_SAMPLE_LED_STATE
-  app PRIVATE src/modules/led_state.c)
-
-
-target_sources_ifdef(CONFIG_CAF_MY_KEYMAP
-  app PRIVATE src/modules/keymap.c)
