@@ -13,12 +13,12 @@ jobs:
       - name: Checkout repository with example application
         uses: actions/checkout@v4
         with:
-          path: example-application
+          path: teclat-fw
 
       - name: Prepare west project
         run: |
           python3 -m pip install west
-          west init -l example-application
+          west init -l teclat-fw
           west update -o=--depth=1 -n nrf
 
       - name: Find toolchain bundle id
@@ -38,15 +38,15 @@ jobs:
       - name: Checkout repository with example application
         uses: actions/checkout@v4
         with:
-          path: example-application
+          path: teclat-fw
 
       - name: Prepare west project
         run: |
-          west init -l example-application
+          west init -l teclat-fw
           west update -o=--depth=1 -n
 
       - name: Build firmware
-        working-directory: example-application
+        working-directory: teclat-fw
         run: |
           west twister -T app -v --inline-logs --integration
 
@@ -54,9 +54,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: built-applications
-          path: example-application/twister-out/**/zephyr/zephyr.hex
+          path: teclat-fw/twister-out/**/zephyr/zephyr.hex
 
       - name: Twister Tests
-        working-directory: example-application
+        working-directory: teclat-fw
         run: |
           west twister -T tests -v --inline-logs --integration
