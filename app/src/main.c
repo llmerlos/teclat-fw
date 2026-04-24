@@ -27,7 +27,10 @@
 #include <zephyr/bluetooth/services/bas.h>
 #include <bluetooth/services/hids.h>
 #include <zephyr/bluetooth/services/dis.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <dk_buttons_and_leds.h>
+
+#include "input.h"
 
 #define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
@@ -48,12 +51,6 @@
 #define ADV_STATUS_LED DK_LED1
 #define CON_STATUS_LED DK_LED2
 #define LED_CAPS_LOCK  DK_LED3
-#define KEY_TEXT_MASK  DK_BTN1_MSK
-#define KEY_SHIFT_MASK DK_BTN2_MSK
-
-/* Key used to accept or reject passkey value */
-#define KEY_PAIRING_ACCEPT DK_BTN1_MSK
-#define KEY_PAIRING_REJECT DK_BTN2_MSK
 
 /* HIDs queue elements. */
 #define HIDS_QUEUE_SIZE 10
@@ -727,51 +724,47 @@ static void num_comp_reply(bool accept)
 	}
 }
 
-static void button_changed(uint32_t button_state, uint32_t has_changed)
+static void on_input_event(uint16_t code, bool pressed)
 {
-	static bool pairing_button_pressed;
+	static bool pairing_button_latched;
 
-	uint32_t buttons = button_state & has_changed;
-
+	/* Pairing takes priority: consume press of KEY_0/KEY_1 when a
+	 * passkey is pending; latch so we also swallow the matching release.
+	 */
 	if (k_msgq_num_used_get(&mitm_queue)) {
-		if (buttons & KEY_PAIRING_ACCEPT) {
-			pairing_button_pressed = true;
+		if (pressed && code == INPUT_KEY_0) {
+			pairing_button_latched = true;
 			num_comp_reply(true);
-
 			return;
 		}
-
-		if (buttons & KEY_PAIRING_REJECT) {
-			pairing_button_pressed = true;
+		if (pressed && code == INPUT_KEY_1) {
+			pairing_button_latched = true;
 			num_comp_reply(false);
-
 			return;
 		}
 	}
-
-	/* Do not take any action if the pairing button is released. */
-	if (pairing_button_pressed && (has_changed & (KEY_PAIRING_ACCEPT | KEY_PAIRING_REJECT))) {
-		pairing_button_pressed = false;
-
+	if (pairing_button_latched && !pressed &&
+	    (code == INPUT_KEY_0 || code == INPUT_KEY_1)) {
+		pairing_button_latched = false;
 		return;
 	}
 
-	if (has_changed & KEY_TEXT_MASK) {
-		button_text_changed((button_state & KEY_TEXT_MASK) != 0);
-	}
-	if (has_changed & KEY_SHIFT_MASK) {
-		button_shift_changed((button_state & KEY_SHIFT_MASK) != 0);
+	switch (code) {
+	case INPUT_KEY_0:
+		button_text_changed(pressed);
+		break;
+	case INPUT_KEY_1:
+		button_shift_changed(pressed);
+		break;
+	default:
+		/* INPUT_KEY_2 is wired in the overlay but unused for now. */
+		break;
 	}
 }
 
-static void configure_gpio(void)
+static void configure_leds(void)
 {
 	int err;
-
-	err = dk_buttons_init(button_changed);
-	if (err) {
-		printk("Cannot init buttons (err: %d)\n", err);
-	}
 
 	err = dk_leds_init();
 	if (err) {
@@ -799,7 +792,8 @@ int main(void)
 
 	printk("Starting Bluetooth Peripheral HIDS keyboard sample\n");
 
-	configure_gpio();
+	configure_leds();
+	app_input_register(on_input_event);
 
 	err = bt_conn_auth_cb_register(&conn_auth_callbacks);
 	if (err) {
