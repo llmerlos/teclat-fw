@@ -757,7 +757,7 @@ static void on_input_event(uint16_t code, bool pressed)
 		button_shift_changed(pressed);
 		break;
 	default:
-		/* INPUT_KEY_2 is wired in the overlay but unused for now. */
+		/* INPUT_KEY_2 and INPUT_KEY_3 are wired in the overlay but unused for now. */
 		break;
 	}
 }
