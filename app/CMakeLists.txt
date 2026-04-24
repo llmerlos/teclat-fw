@@ -14,6 +14,7 @@ project(NONE)
 # NORDIC SDK APP START
 target_sources(app PRIVATE
   src/main.c
+  src/input.c
 )
 
 target_include_directories(app PRIVATE src)
