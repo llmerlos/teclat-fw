@@ -17,6 +17,7 @@ target_sources(app PRIVATE
   src/input.c
   src/hid.c
   src/ble.c
+  src/pairing.c
 )
 
 target_include_directories(app PRIVATE src)
