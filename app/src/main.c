@@ -16,7 +16,6 @@
 #include <zephyr/bluetooth/bluetooth.h>
 
 #include <zephyr/bluetooth/services/bas.h>
-#include <zephyr/bluetooth/services/dis.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
 #include <dk_buttons_and_leds.h>
@@ -30,9 +29,6 @@
 #define ADV_LED_BLINK_INTERVAL 1000
 
 #define ADV_STATUS_LED DK_LED1
-
-/* HIDs queue elements. */
-#define HIDS_QUEUE_SIZE 10
 
 static void on_input_event(uint16_t code, bool pressed)
 {
