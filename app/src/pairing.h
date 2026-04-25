@@ -9,8 +9,9 @@
 
 /* Initialize the pairing module. Registers bt_conn_auth_cb and
  * bt_conn_auth_info_cb. Call once before bt_enable().
+ * Returns 0 on success, negative errno on registration failure.
  */
-void pairing_init(void);
+int pairing_init(void);
 
 /* True while at least one numeric-compare passkey is waiting for user
  * confirmation. */

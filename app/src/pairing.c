@@ -145,7 +145,7 @@ void pairing_respond(bool accept)
 	}
 }
 
-void pairing_init(void)
+int pairing_init(void)
 {
 	int err;
 
@@ -154,12 +154,16 @@ void pairing_init(void)
 	err = bt_conn_auth_cb_register(&conn_auth_callbacks);
 	if (err) {
 		printk("Failed to register authorization callbacks.\n");
+		return err;
 	}
 
 	err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
 	if (err) {
 		printk("Failed to register authorization info callbacks.\n");
+		return err;
 	}
+
+	return 0;
 }
 
 bool pairing_is_confirm_pending(void)

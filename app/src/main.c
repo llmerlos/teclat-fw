@@ -138,7 +138,9 @@ int main(void)
 	configure_leds();
 	app_input_register(on_input_event);
 
-	pairing_init();
+	if (pairing_init() != 0) {
+		return 0;
+	}
 
 	hid_init();
 
