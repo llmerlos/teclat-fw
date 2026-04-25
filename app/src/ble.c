@@ -12,9 +12,6 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/uuid.h>
 
-#include <bluetooth/services/hids.h>
-#include <zephyr/bluetooth/services/bas.h>
-
 #include <dk_buttons_and_leds.h>
 
 #include "ble.h"

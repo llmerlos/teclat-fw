@@ -27,10 +27,6 @@
 #define OUTPUT_REPORT_BIT_MASK_CAPS_LOCK 0x02
 #define INPUT_REP_KEYS_REF_ID            0
 #define OUTPUT_REP_KEYS_REF_ID           0
-#define MODIFIER_KEY_POS                 0
-#define SHIFT_KEY_CODE                   0x02
-#define SCAN_CODE_POS                    2
-#define KEYS_MAX_LEN                     (INPUT_REPORT_KEYS_MAX_LEN - SCAN_CODE_POS)
 
 /* ********************* */
 /* Buttons configuration */
