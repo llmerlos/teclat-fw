@@ -56,7 +56,7 @@
 /* Current report map construction requires exactly 8 buttons */
 BUILD_ASSERT((KEY_CTRL_CODE_MAX - KEY_CTRL_CODE_MIN) + 1 == 8);
 
-#define LED_CAPS_LOCK  DK_LED3
+#define LED_CAPS_LOCK DK_LED3
 
 /* OUT report internal indexes.
  *
