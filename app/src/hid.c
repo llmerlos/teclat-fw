@@ -159,7 +159,7 @@ static void hids_pm_evt_handler(enum bt_hids_pm_evt evt, struct bt_conn *conn)
 	}
 }
 
-void hid_init(void)
+void ble_hid_init(void)
 {
 	int err;
 	struct bt_hids_init_param hids_init_obj = {0};
@@ -362,7 +362,7 @@ static int hid_kbd_state_key_clear(uint8_t key)
  *
  *  @return 0 on success or negative error code.
  */
-int hid_buttons_press(const uint8_t *keys, size_t cnt)
+int ble_hid_buttons_press(const uint8_t *keys, size_t cnt)
 {
 	while (cnt--) {
 		int err;
@@ -385,7 +385,7 @@ int hid_buttons_press(const uint8_t *keys, size_t cnt)
  *
  *  @return 0 on success or negative error code.
  */
-int hid_buttons_release(const uint8_t *keys, size_t cnt)
+int ble_hid_buttons_release(const uint8_t *keys, size_t cnt)
 {
 	while (cnt--) {
 		int err;
@@ -400,7 +400,7 @@ int hid_buttons_release(const uint8_t *keys, size_t cnt)
 	return key_report_send();
 }
 
-int hid_on_connected(struct bt_conn *conn)
+int ble_hid_on_connected(struct bt_conn *conn)
 {
 	int err;
 
@@ -420,7 +420,7 @@ int hid_on_connected(struct bt_conn *conn)
 	return 0;
 }
 
-int hid_on_disconnected(struct bt_conn *conn)
+int ble_hid_on_disconnected(struct bt_conn *conn)
 {
 	int err;
 
@@ -438,7 +438,7 @@ int hid_on_disconnected(struct bt_conn *conn)
 	return err;
 }
 
-bool hid_has_active_clients(void)
+bool ble_hid_has_active_clients(void)
 {
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {
 		if (hid_clients[i].conn) {
@@ -448,7 +448,7 @@ bool hid_has_active_clients(void)
 	return false;
 }
 
-size_t hid_active_client_count(void)
+size_t ble_hid_active_client_count(void)
 {
 	size_t n = 0;
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {

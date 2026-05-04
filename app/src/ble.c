@@ -57,7 +57,7 @@ void ble_advertising_start(void)
 	printk("Advertising successfully started\n");
 }
 
-static void connected(struct bt_conn *conn, uint8_t err)
+static void ble_connected_cb(struct bt_conn *conn, uint8_t err)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -71,19 +71,19 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	printk("Connected %s\n", addr);
 	dk_set_led_on(CON_STATUS_LED);
 
-	if (hid_on_connected(conn) != 0) {
+	if (ble_hid_on_connected(conn) != 0) {
 		return;
 	}
 
 	/* If another slot is still free, keep advertising; otherwise stop. */
-	if (hid_active_client_count() < CONFIG_BT_HIDS_MAX_CLIENT_COUNT) {
+	if (ble_hid_active_client_count() < CONFIG_BT_HIDS_MAX_CLIENT_COUNT) {
 		ble_advertising_start();
 		return;
 	}
 	is_adv = false;
 }
 
-static void disconnected(struct bt_conn *conn, uint8_t reason)
+static void ble_disconnected_cb(struct bt_conn *conn, uint8_t reason)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -91,16 +91,17 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 
 	printk("Disconnected from %s, reason 0x%02x %s\n", addr, reason, bt_hci_err_to_str(reason));
 
-	(void)hid_on_disconnected(conn);
+	(void)ble_hid_on_disconnected(conn);
 
-	if (!hid_has_active_clients()) {
+	if (!ble_hid_has_active_clients()) {
 		dk_set_led_off(CON_STATUS_LED);
 	}
 
 	ble_advertising_start();
 }
 
-static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
+static void ble_security_changed_cb(struct bt_conn *conn, bt_security_t level,
+				    enum bt_security_err err)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -115,9 +116,9 @@ static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
-	.connected = connected,
-	.disconnected = disconnected,
-	.security_changed = security_changed,
+	.connected = ble_connected_cb,
+	.disconnected = ble_disconnected_cb,
+	.security_changed = ble_security_changed_cb,
 };
 
 bool ble_is_advertising(void)

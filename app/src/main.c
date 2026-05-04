@@ -46,22 +46,15 @@ static void on_input_event(uint16_t code, bool pressed)
 			return;
 		}
 	}
-	if (pairing_button_latched && !pressed &&
-	    (code == INPUT_KEY_0 || code == INPUT_KEY_1)) {
+	if (pairing_button_latched && !pressed && (code == INPUT_KEY_0 || code == INPUT_KEY_1)) {
 		pairing_button_latched = false;
 		return;
 	}
 
-	switch (code) {
-	case INPUT_KEY_0:
-		keyboard_text_button(pressed);
-		break;
-	case INPUT_KEY_1:
-		keyboard_shift_button(pressed);
-		break;
-	default:
-		/* INPUT_KEY_2 and INPUT_KEY_3 are wired in the overlay but unused for now. */
-		break;
+	if (pressed) {
+		kb_process_input_press(code);
+	} else {
+		kb_process_input_release(code);
 	}
 }
 
@@ -102,7 +95,7 @@ int main(void)
 		return 0;
 	}
 
-	hid_init();
+	ble_hid_init();
 
 	err = bt_enable(NULL);
 	if (err) {
