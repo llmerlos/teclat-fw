@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 
 #include <zephyr/settings/settings.h>
 
@@ -19,12 +19,14 @@
 #include "idle.h"
 #include "pairing.h"
 
+LOG_MODULE_REGISTER(app_main, CONFIG_LOG_DEFAULT_LEVEL);
+
 static void configure_leds(void)
 {
 	int err = dk_leds_init();
 
 	if (err) {
-		printk("Cannot init LEDs (err: %d)\n", err);
+		LOG_ERR("Cannot init LEDs (err %d)", err);
 	}
 }
 
@@ -32,7 +34,7 @@ int main(void)
 {
 	int err;
 
-	printk("Starting Bluetooth Peripheral HIDS keyboard sample\n");
+	LOG_INF("Starting Bluetooth Peripheral HIDS keyboard sample");
 
 	configure_leds();
 
@@ -44,11 +46,11 @@ int main(void)
 
 	err = bt_enable(NULL);
 	if (err) {
-		printk("Bluetooth init failed (err %d)\n", err);
+		LOG_ERR("Bluetooth init failed (err %d)", err);
 		return 0;
 	}
 
-	printk("Bluetooth initialized\n");
+	LOG_INF("Bluetooth initialized");
 
 	if (IS_ENABLED(CONFIG_SETTINGS)) {
 		settings_load();

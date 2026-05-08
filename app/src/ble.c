@@ -5,9 +5,9 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <zephyr/sys/printk.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/settings/settings.h>
 
@@ -21,6 +21,8 @@
 #include "ble.h"
 #include "events.h"
 #include "hid.h"
+
+LOG_MODULE_REGISTER(app_ble, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
@@ -107,7 +109,7 @@ static void adv_stop(void)
 	}
 	err = bt_le_adv_stop();
 	if (err && err != -EALREADY) {
-		printk("Advertising stop failed (err %d)\n", err);
+		LOG_ERR("Advertising stop failed (err %d)", err);
 	}
 	advertising_id = ADV_NONE;
 	adv_led_stop();
@@ -126,14 +128,14 @@ static int adv_start_for(uint8_t id)
 	adv_param.id = id;
 	err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 	if (err && err != -EALREADY) {
-		printk("Advertising failed to start (id=%u err=%d)\n", id, err);
+		LOG_ERR("Advertising failed to start (id=%u err=%d)", id, err);
 		return err;
 	}
 
 	advertising_id = id;
 	adv_led_start();
 	if (err != -EALREADY) {
-		printk("Advertising started for slot %u\n", id);
+		LOG_INF("Advertising started for slot %u", id);
 	}
 	return 0;
 }
@@ -171,7 +173,7 @@ static void persist_active_host(uint8_t slot)
 	int err = settings_save_one("app/host/active", &slot, sizeof(slot));
 
 	if (err) {
-		printk("Active-host save failed (err %d)\n", err);
+		LOG_ERR("Active-host save failed (err %d)", err);
 	}
 }
 
@@ -186,20 +188,20 @@ int ble_init(void)
 		int id = bt_id_create(NULL, NULL);
 
 		if (id < 0) {
-			printk("bt_id_create failed (err %d)\n", id);
+			LOG_ERR("bt_id_create failed (err %d)", id);
 			return id;
 		}
-		printk("Created identity %d\n", id);
+		LOG_INF("Created identity %d", id);
 	}
 
-	printk("Active host slot: %u\n", ble_get_active_host());
+	LOG_INF("Active host slot: %u", ble_get_active_host());
 	return 0;
 }
 
 static void select_host(uint8_t slot)
 {
 	if (slot >= CONFIG_APP_HOST_SLOTS) {
-		printk("HOST_SELECT: invalid slot %u\n", slot);
+		LOG_WRN("HOST_SELECT: invalid slot %u", slot);
 		return;
 	}
 	if (slot == ble_get_active_host() && (slot_has_conn(slot) || advertising_id == slot)) {
@@ -241,9 +243,9 @@ static void clear_active_bonds(void)
 
 	err = bt_unpair(slot, BT_ADDR_LE_ANY);
 	if (err) {
-		printk("bt_unpair slot=%u err=%d\n", slot, err);
+		LOG_ERR("bt_unpair slot=%u err=%d", slot, err);
 	} else {
-		printk("Cleared bonds for slot %u\n", slot);
+		LOG_INF("Cleared bonds for slot %u", slot);
 	}
 
 	(void)adv_start_for(slot);
@@ -257,16 +259,16 @@ static void ble_connected_cb(struct bt_conn *conn, uint8_t err)
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 	if (err) {
-		printk("Failed to connect to %s 0x%02x %s\n", addr, err, bt_hci_err_to_str(err));
+		LOG_ERR("Failed to connect to %s 0x%02x %s", addr, err, bt_hci_err_to_str(err));
 		return;
 	}
 
 	if (bt_conn_get_info(conn, &info) != 0) {
-		printk("Connected (no info) %s\n", addr);
+		LOG_WRN("Connected (no info) %s", addr);
 		return;
 	}
 
-	printk("Connected slot=%u addr=%s\n", info.id, addr);
+	LOG_INF("Connected slot=%u addr=%s", info.id, addr);
 	dk_set_led_on(CON_STATUS_LED);
 
 	if (ble_hid_on_connected(conn) != 0) {
@@ -288,8 +290,8 @@ static void ble_disconnected_cb(struct bt_conn *conn, uint8_t reason)
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	(void)bt_conn_get_info(conn, &info);
 
-	printk("Disconnected slot=%u addr=%s reason 0x%02x %s\n", info.id, addr, reason,
-	       bt_hci_err_to_str(reason));
+	LOG_INF("Disconnected slot=%u addr=%s reason 0x%02x %s", info.id, addr, reason,
+		bt_hci_err_to_str(reason));
 
 	(void)ble_hid_on_disconnected(conn);
 
@@ -310,10 +312,10 @@ static void ble_security_changed_cb(struct bt_conn *conn, bt_security_t level,
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 	if (!err) {
-		printk("Security changed: %s level %u\n", addr, level);
+		LOG_INF("Security changed: %s level %u", addr, level);
 	} else {
-		printk("Security failed: %s level %u err %d %s\n", addr, level, err,
-		       bt_security_err_to_str(err));
+		LOG_ERR("Security failed: %s level %u err %d %s", addr, level, err,
+			bt_security_err_to_str(err));
 	}
 }
 

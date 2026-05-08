@@ -2,8 +2,8 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -11,6 +11,8 @@
 
 #include "events.h"
 #include "pairing.h"
+
+LOG_MODULE_REGISTER(app_pairing, CONFIG_LOG_DEFAULT_LEVEL);
 
 static struct k_work pairing_work;
 struct pairing_data_mitm {
@@ -35,9 +37,8 @@ static void pairing_process(struct k_work *work)
 
 	bt_addr_le_to_str(bt_conn_get_dst(pairing_data.conn), addr, sizeof(addr));
 
-	printk("Passkey for %s: %06u\n", addr, pairing_data.passkey);
-
-	printk("Press Button 0 to confirm, Button 1 to reject.\n");
+	LOG_INF("Passkey for %s: %06u", addr, pairing_data.passkey);
+	LOG_INF("Press Button 0 to confirm, Button 1 to reject.");
 }
 
 static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
@@ -46,7 +47,7 @@ static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Passkey for %s: %06u\n", addr, passkey);
+	LOG_INF("Passkey for %s: %06u", addr, passkey);
 }
 
 static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
@@ -60,7 +61,7 @@ static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
 
 	err = k_msgq_put(&mitm_queue, &pairing_data, K_NO_WAIT);
 	if (err) {
-		printk("Pairing queue is full. Purge previous data.\n");
+		LOG_WRN("Pairing queue is full. Purge previous data.");
 	}
 
 	/* In the case of multiple pairing requests, trigger
@@ -80,7 +81,7 @@ static void auth_cancel(struct bt_conn *conn)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing cancelled: %s\n", addr);
+	LOG_WRN("Pairing cancelled: %s", addr);
 }
 
 static void pairing_complete(struct bt_conn *conn, bool bonded)
@@ -89,7 +90,7 @@ static void pairing_complete(struct bt_conn *conn, bool bonded)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing completed: %s, bonded: %d\n", addr, bonded);
+	LOG_INF("Pairing completed: %s, bonded: %d", addr, bonded);
 }
 
 static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
@@ -108,8 +109,8 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing failed conn: %s, reason %d %s\n", addr, reason,
-	       bt_security_err_to_str(reason));
+	LOG_ERR("Pairing failed conn: %s, reason %d %s", addr, reason,
+		bt_security_err_to_str(reason));
 }
 
 static struct bt_conn_auth_cb conn_auth_callbacks = {
@@ -134,10 +135,10 @@ static void pairing_respond(bool accept)
 
 	if (accept) {
 		bt_conn_auth_passkey_confirm(conn);
-		printk("Numeric Match, conn %p\n", conn);
+		LOG_INF("Numeric Match, conn %p", (void *)conn);
 	} else {
 		bt_conn_auth_cancel(conn);
-		printk("Numeric Reject, conn %p\n", conn);
+		LOG_INF("Numeric Reject, conn %p", (void *)conn);
 	}
 
 	bt_conn_unref(pairing_data.conn);
@@ -155,13 +156,13 @@ int pairing_init(void)
 
 	err = bt_conn_auth_cb_register(&conn_auth_callbacks);
 	if (err) {
-		printk("Failed to register authorization callbacks.\n");
+		LOG_ERR("Failed to register authorization callbacks (err %d)", err);
 		return err;
 	}
 
 	err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
 	if (err) {
-		printk("Failed to register authorization info callbacks.\n");
+		LOG_ERR("Failed to register authorization info callbacks (err %d)", err);
 		return err;
 	}
 

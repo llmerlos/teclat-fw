@@ -2,14 +2,16 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/sys/poweroff.h>
 #include <zephyr/zbus/zbus.h>
 
 #include "events.h"
 #include "idle.h"
 #include "input.h"
+
+LOG_MODULE_REGISTER(app_idle, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define IDLE_TIMEOUT K_MINUTES(CONFIG_APP_IDLE_TIMEOUT_MIN)
 
@@ -32,12 +34,12 @@ static void idle_enter_sleep(struct k_work *work)
 
 	err = input_prepare_for_sleep();
 	if (err) {
-		printk("Wake-source config failed (err %d), retrying later\n", err);
+		LOG_ERR("Wake-source config failed (err %d), retrying later", err);
 		(void)k_work_reschedule(&idle_work, IDLE_TIMEOUT);
 		return;
 	}
 
-	printk("Idle %d min, entering system off\n", CONFIG_APP_IDLE_TIMEOUT_MIN);
+	LOG_INF("Idle %d min, entering system off", CONFIG_APP_IDLE_TIMEOUT_MIN);
 	sys_poweroff();
 }
 

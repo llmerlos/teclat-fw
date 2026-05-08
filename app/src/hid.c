@@ -7,8 +7,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -22,6 +22,8 @@
 #include "ble.h"
 #include "events.h"
 #include "hid.h"
+
+LOG_MODULE_REGISTER(app_hid, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define BASE_USB_HID_SPEC_VERSION 0x0101
 
@@ -98,12 +100,12 @@ static void hids_outp_rep_handler(struct bt_hids_rep *rep, struct bt_conn *conn,
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	if (!write) {
-		printk("Output report read\n");
+		LOG_DBG("Output report read");
 		return;
 	};
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-	printk("Output report has been received %s\n", addr);
+	LOG_DBG("Output report received from %s", addr);
 	caps_lock_handler(rep);
 }
 
@@ -112,12 +114,12 @@ static void hids_boot_kb_outp_rep_handler(struct bt_hids_rep *rep, struct bt_con
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	if (!write) {
-		printk("Output report read\n");
+		LOG_DBG("Boot keyboard output report read");
 		return;
 	};
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-	printk("Boot Keyboard Output report has been received %s\n", addr);
+	LOG_DBG("Boot keyboard output report received from %s", addr);
 	caps_lock_handler(rep);
 }
 
@@ -133,7 +135,7 @@ static void hids_pm_evt_handler(enum bt_hids_pm_evt evt, struct bt_conn *conn)
 	}
 
 	if (i >= CONFIG_BT_HIDS_MAX_CLIENT_COUNT) {
-		printk("Cannot find connection handle when processing PM");
+		LOG_ERR("Cannot find connection handle when processing PM");
 		return;
 	}
 
@@ -141,12 +143,12 @@ static void hids_pm_evt_handler(enum bt_hids_pm_evt evt, struct bt_conn *conn)
 
 	switch (evt) {
 	case BT_HIDS_PM_EVT_BOOT_MODE_ENTERED:
-		printk("Boot mode entered %s\n", addr);
+		LOG_INF("Boot mode entered %s", addr);
 		hid_clients[i].in_boot_mode = true;
 		break;
 
 	case BT_HIDS_PM_EVT_REPORT_MODE_ENTERED:
-		printk("Report mode entered %s\n", addr);
+		LOG_INF("Report mode entered %s", addr);
 		hid_clients[i].in_boot_mode = false;
 		break;
 
@@ -266,7 +268,7 @@ static void hid_on_report(const struct zbus_channel *chan)
 						   sizeof(data), NULL);
 		}
 		if (err) {
-			printk("Key report send error: %d\n", err);
+			LOG_ERR("Key report send error: %d", err);
 		}
 	}
 }
@@ -281,7 +283,7 @@ int ble_hid_on_connected(struct bt_conn *conn)
 
 	err = bt_hids_connected(&hids_obj, conn);
 	if (err) {
-		printk("Failed to notify HID service about connection\n");
+		LOG_ERR("Failed to notify HID service about connection (err %d)", err);
 		return err;
 	}
 
@@ -304,7 +306,7 @@ int ble_hid_on_disconnected(struct bt_conn *conn)
 
 	err = bt_hids_disconnected(&hids_obj, conn);
 	if (err) {
-		printk("Failed to notify HID service about disconnection\n");
+		LOG_ERR("Failed to notify HID service about disconnection (err %d)", err);
 	}
 
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {
