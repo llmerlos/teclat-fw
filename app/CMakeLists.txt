@@ -21,6 +21,7 @@ target_sources(app PRIVATE
   src/pairing.c
   src/keyboard.c
   src/idle.c
+  src/battery.c
 )
 
 target_include_directories(app PRIVATE src)

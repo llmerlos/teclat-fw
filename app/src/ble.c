@@ -25,12 +25,38 @@
 #define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
-#define CON_STATUS_LED DK_LED2
+#define ADV_STATUS_LED      DK_LED1
+#define CON_STATUS_LED      DK_LED2
+#define ADV_LED_INTERVAL_MS 1000
 
 #define ADV_NONE (-1)
 
 static atomic_t active_host_id = ATOMIC_INIT(0);
 static int advertising_id = ADV_NONE;
+
+static int adv_led_state;
+
+static void adv_led_blink(struct k_timer *timer)
+{
+	ARG_UNUSED(timer);
+	adv_led_state ^= 1;
+	dk_set_led(ADV_STATUS_LED, adv_led_state);
+}
+
+static K_TIMER_DEFINE(adv_led_timer, adv_led_blink, NULL);
+
+static void adv_led_start(void)
+{
+	adv_led_state = 0;
+	k_timer_start(&adv_led_timer, K_MSEC(ADV_LED_INTERVAL_MS),
+		      K_MSEC(ADV_LED_INTERVAL_MS));
+}
+
+static void adv_led_stop(void)
+{
+	k_timer_stop(&adv_led_timer);
+	dk_set_led_off(ADV_STATUS_LED);
+}
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE, (CONFIG_BT_DEVICE_APPEARANCE >> 0) & 0xff,
@@ -84,6 +110,7 @@ static void adv_stop(void)
 		printk("Advertising stop failed (err %d)\n", err);
 	}
 	advertising_id = ADV_NONE;
+	adv_led_stop();
 }
 
 static int adv_start_for(uint8_t id)
@@ -98,28 +125,22 @@ static int adv_start_for(uint8_t id)
 
 	adv_param.id = id;
 	err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
-	if (err == -EALREADY) {
-		advertising_id = id;
-		return 0;
-	}
-	if (err) {
+	if (err && err != -EALREADY) {
 		printk("Advertising failed to start (id=%u err=%d)\n", id, err);
 		return err;
 	}
 
 	advertising_id = id;
-	printk("Advertising started for slot %u\n", id);
+	adv_led_start();
+	if (err != -EALREADY) {
+		printk("Advertising started for slot %u\n", id);
+	}
 	return 0;
 }
 
 void ble_advertising_start(void)
 {
 	(void)adv_start_for(ble_get_active_host());
-}
-
-bool ble_is_advertising(void)
-{
-	return advertising_id != ADV_NONE;
 }
 
 static int active_host_settings_set(const char *key, size_t len, settings_read_cb read_cb,
@@ -255,6 +276,7 @@ static void ble_connected_cb(struct bt_conn *conn, uint8_t err)
 	if (advertising_id == info.id) {
 		/* The host stack stopped advertising on connect. */
 		advertising_id = ADV_NONE;
+		adv_led_stop();
 	}
 }
 
