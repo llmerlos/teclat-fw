@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
+#include <string.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/input/input.h>
 #include <zephyr/input/input_hid.h>
@@ -10,16 +11,12 @@
 #include "events.h"
 #include "pairing.h"
 
-#define KEYBOARD_HID_SIZE 6
-
-static struct keyboard_report_hid_t {
-	uint8_t modifiers;
-	uint8_t keycodes[KEYBOARD_HID_SIZE];
-} kb_hid_report;
+static struct app_hid_report kb_hid_report;
+static struct app_hid_report kb_last_published;
 
 static struct keyboard_input_stack_t {
 	uint32_t modifiers[8];
-	uint32_t keycodes[KEYBOARD_HID_SIZE];
+	uint32_t keycodes[APP_HID_KEYCODES];
 } kb_inputs_src;
 
 static bool kb_fn_active;
@@ -181,6 +178,15 @@ static void kb_on_release(uint32_t input_code)
 	}
 }
 
+static void kb_publish_report_if_changed(void)
+{
+	if (memcmp(&kb_hid_report, &kb_last_published, sizeof(kb_hid_report)) == 0) {
+		return;
+	}
+	kb_last_published = kb_hid_report;
+	(void)zbus_chan_pub(&chan_hid_report, &kb_hid_report, K_NO_WAIT);
+}
+
 static void kb_on_key_event(const struct zbus_channel *chan)
 {
 	const struct app_key_event *evt = zbus_chan_const_msg(chan);
@@ -190,6 +196,8 @@ static void kb_on_key_event(const struct zbus_channel *chan)
 	} else {
 		kb_on_release(evt->code);
 	}
+
+	kb_publish_report_if_changed();
 }
 
 ZBUS_LISTENER_DEFINE(kb_listener, kb_on_key_event);

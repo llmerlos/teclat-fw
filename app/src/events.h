@@ -41,8 +41,18 @@ struct app_sys_intent {
 	uint8_t arg; /* HOST_SELECT: slot index; otherwise unused */
 };
 
+/* HID keyboard report snapshot. Published by keyboard.c whenever the
+ * report state changes. hid.c subscribes and pushes to active clients.
+ */
+#define APP_HID_KEYCODES 6
+struct app_hid_report {
+	uint8_t modifiers;
+	uint8_t keycodes[APP_HID_KEYCODES];
+};
+
 ZBUS_CHAN_DECLARE(chan_key_event);
 ZBUS_CHAN_DECLARE(chan_activity);
 ZBUS_CHAN_DECLARE(chan_sys_intent);
+ZBUS_CHAN_DECLARE(chan_hid_report);
 
 #endif /* APP_EVENTS_H_ */

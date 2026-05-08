@@ -26,3 +26,10 @@ ZBUS_CHAN_DEFINE(chan_sys_intent,
 		 NULL,
 		 ZBUS_OBSERVERS_EMPTY,
 		 ZBUS_MSG_INIT(0));
+
+ZBUS_CHAN_DEFINE(chan_hid_report,
+		 struct app_hid_report,
+		 NULL,
+		 NULL,
+		 ZBUS_OBSERVERS_EMPTY,
+		 ZBUS_MSG_INIT(0));

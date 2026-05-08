@@ -5,11 +5,11 @@
 #include <zephyr/types.h>
 #include <stddef.h>
 #include <string.h>
-#include <errno.h>
 #include <assert.h>
 
 #include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
+#include <zephyr/zbus/zbus.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -19,6 +19,7 @@
 #include <bluetooth/services/hids.h>
 #include <dk_buttons_and_leds.h>
 
+#include "events.h"
 #include "hid.h"
 
 #define BASE_USB_HID_SPEC_VERSION 0x0101
@@ -83,13 +84,6 @@ static struct conn_mode {
 	struct bt_conn *conn;
 	bool in_boot_mode;
 } hid_clients[CONFIG_BT_HIDS_MAX_CLIENT_COUNT];
-
-/* Current report status
- */
-static struct keyboard_state {
-	uint8_t ctrl_keys_state; /* Current keys state */
-	uint8_t keys_state[KEY_PRESS_MAX];
-} hid_keyboard_state;
 
 static void caps_lock_handler(const struct bt_hids_rep *rep)
 {
@@ -242,163 +236,40 @@ void ble_hid_init(void)
 	__ASSERT(err == 0, "HIDS initialization failed\n");
 }
 
-/** @brief Function process keyboard state and sends it
- *
- *  @param pstate     The state to be sent
- *  @param boot_mode  Information if boot mode protocol is selected.
- *  @param conn       Connection handler
- *
- *  @return 0 on success or negative error code.
- */
-static int key_report_con_send(const struct keyboard_state *state, bool boot_mode,
-			       struct bt_conn *conn)
+static void hid_on_report(const struct zbus_channel *chan)
 {
-	int err = 0;
+	const struct app_hid_report *r = zbus_chan_const_msg(chan);
 	uint8_t data[INPUT_REPORT_KEYS_MAX_LEN];
-	uint8_t *key_data;
-	const uint8_t *key_state;
-	size_t n;
 
-	data[0] = state->ctrl_keys_state;
+	BUILD_ASSERT(KEY_PRESS_MAX == APP_HID_KEYCODES);
+
+	data[0] = r->modifiers;
 	data[1] = 0;
-	key_data = &data[2];
-	key_state = state->keys_state;
+	memcpy(&data[2], r->keycodes, APP_HID_KEYCODES);
 
-	for (n = 0; n < KEY_PRESS_MAX; ++n) {
-		*key_data++ = *key_state++;
-	}
-	if (boot_mode) {
-		err = bt_hids_boot_kb_inp_rep_send(&hids_obj, conn, data, sizeof(data), NULL);
-	} else {
-		err = bt_hids_inp_rep_send(&hids_obj, conn, INPUT_REP_KEYS_IDX, data, sizeof(data),
-					   NULL);
-	}
-	return err;
-}
-
-/** @brief Function process and send keyboard state to all active connections
- *
- * Function process global keyboard state and send it to all connected
- * clients.
- *
- * @return 0 on success or negative error code.
- */
-static int key_report_send(void)
-{
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {
-		if (hid_clients[i].conn) {
-			int err;
-
-			err = key_report_con_send(&hid_keyboard_state, hid_clients[i].in_boot_mode,
-						  hid_clients[i].conn);
-			if (err) {
-				printk("Key report send error: %d\n", err);
-				return err;
-			}
-		}
-	}
-	return 0;
-}
-
-/** @brief Change key code to ctrl code mask
- *
- *  Function changes the key code to the mask in the control code
- *  field inside the raport.
- *  Returns 0 if key code is not a control key.
- *
- *  @param key Key code
- *
- *  @return Mask of the control key or 0.
- */
-static uint8_t button_ctrl_code(uint8_t key)
-{
-	if (KEY_CTRL_CODE_MIN <= key && key <= KEY_CTRL_CODE_MAX) {
-		return (uint8_t)(1U << (key - KEY_CTRL_CODE_MIN));
-	}
-	return 0;
-}
-
-static int hid_kbd_state_key_set(uint8_t key)
-{
-	uint8_t ctrl_mask = button_ctrl_code(key);
-
-	if (ctrl_mask) {
-		hid_keyboard_state.ctrl_keys_state |= ctrl_mask;
-		return 0;
-	}
-	for (size_t i = 0; i < KEY_PRESS_MAX; ++i) {
-		if (hid_keyboard_state.keys_state[i] == 0) {
-			hid_keyboard_state.keys_state[i] = key;
-			return 0;
-		}
-	}
-	/* All slots busy */
-	return -EBUSY;
-}
-
-static int hid_kbd_state_key_clear(uint8_t key)
-{
-	uint8_t ctrl_mask = button_ctrl_code(key);
-
-	if (ctrl_mask) {
-		hid_keyboard_state.ctrl_keys_state &= ~ctrl_mask;
-		return 0;
-	}
-	for (size_t i = 0; i < KEY_PRESS_MAX; ++i) {
-		if (hid_keyboard_state.keys_state[i] == key) {
-			hid_keyboard_state.keys_state[i] = 0;
-			return 0;
-		}
-	}
-	/* Key not found */
-	return -EINVAL;
-}
-
-/** @brief Press a button and send report
- *
- *  @note Functions to manipulate hid state are not reentrant
- *  @param keys
- *  @param cnt
- *
- *  @return 0 on success or negative error code.
- */
-int ble_hid_buttons_press(const uint8_t *keys, size_t cnt)
-{
-	while (cnt--) {
+		struct bt_conn *conn = hid_clients[i].conn;
 		int err;
 
-		err = hid_kbd_state_key_set(*keys++);
+		if (!conn) {
+			continue;
+		}
+
+		if (hid_clients[i].in_boot_mode) {
+			err = bt_hids_boot_kb_inp_rep_send(&hids_obj, conn, data, sizeof(data),
+							   NULL);
+		} else {
+			err = bt_hids_inp_rep_send(&hids_obj, conn, INPUT_REP_KEYS_IDX, data,
+						   sizeof(data), NULL);
+		}
 		if (err) {
-			printk("Cannot set selected key.\n");
-			return err;
+			printk("Key report send error: %d\n", err);
 		}
 	}
-
-	return key_report_send();
 }
 
-/** @brief Release the button and send report
- *
- *  @note Functions to manipulate hid state are not reentrant
- *  @param keys
- *  @param cnt
- *
- *  @return 0 on success or negative error code.
- */
-int ble_hid_buttons_release(const uint8_t *keys, size_t cnt)
-{
-	while (cnt--) {
-		int err;
-
-		err = hid_kbd_state_key_clear(*keys++);
-		if (err) {
-			printk("Cannot clear selected key.\n");
-			return err;
-		}
-	}
-
-	return key_report_send();
-}
+ZBUS_LISTENER_DEFINE(hid_listener, hid_on_report);
+ZBUS_CHAN_ADD_OBS(chan_hid_report, hid_listener, 4);
 
 int ble_hid_on_connected(struct bt_conn *conn)
 {
