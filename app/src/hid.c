@@ -19,6 +19,7 @@
 #include <bluetooth/services/hids.h>
 #include <dk_buttons_and_leds.h>
 
+#include "ble.h"
 #include "events.h"
 #include "hid.h"
 
@@ -83,6 +84,7 @@ BT_HIDS_DEF(hids_obj, OUTPUT_REPORT_MAX_LEN, INPUT_REPORT_KEYS_MAX_LEN);
 static struct conn_mode {
 	struct bt_conn *conn;
 	bool in_boot_mode;
+	uint8_t identity_id;
 } hid_clients[CONFIG_BT_HIDS_MAX_CLIENT_COUNT];
 
 static void caps_lock_handler(const struct bt_hids_rep *rep)
@@ -240,6 +242,7 @@ static void hid_on_report(const struct zbus_channel *chan)
 {
 	const struct app_hid_report *r = zbus_chan_const_msg(chan);
 	uint8_t data[INPUT_REPORT_KEYS_MAX_LEN];
+	uint8_t active = ble_get_active_host();
 
 	BUILD_ASSERT(KEY_PRESS_MAX == APP_HID_KEYCODES);
 
@@ -251,7 +254,7 @@ static void hid_on_report(const struct zbus_channel *chan)
 		struct bt_conn *conn = hid_clients[i].conn;
 		int err;
 
-		if (!conn) {
+		if (!conn || hid_clients[i].identity_id != active) {
 			continue;
 		}
 
@@ -273,6 +276,7 @@ ZBUS_CHAN_ADD_OBS(chan_hid_report, hid_listener, 4);
 
 int ble_hid_on_connected(struct bt_conn *conn)
 {
+	struct bt_conn_info info;
 	int err;
 
 	err = bt_hids_connected(&hids_obj, conn);
@@ -281,10 +285,13 @@ int ble_hid_on_connected(struct bt_conn *conn)
 		return err;
 	}
 
+	(void)bt_conn_get_info(conn, &info);
+
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {
 		if (!hid_clients[i].conn) {
 			hid_clients[i].conn = conn;
 			hid_clients[i].in_boot_mode = false;
+			hid_clients[i].identity_id = info.id;
 			break;
 		}
 	}

@@ -15,6 +15,17 @@ source "subsys/logging/Kconfig.template.log_config"
 
 menu "Nordic BLE HIDS Keyboard sample"
 
+config APP_HOST_SLOTS
+	int "Number of host slots"
+	default 3
+	range 1 8
+	help
+	  The keyboard maintains a separate Bluetooth identity (and bond)
+	  per slot, allowing it to pair with multiple hosts and switch the
+	  active output between them. When changing this, also update
+	  CONFIG_BT_MAX_CONN, CONFIG_BT_MAX_PAIRED, CONFIG_BT_ID_MAX, and
+	  CONFIG_BT_HIDS_MAX_CLIENT_COUNT in prj.conf to match.
+
 config SETTINGS
 	default y
 

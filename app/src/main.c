@@ -74,6 +74,10 @@ int main(void)
 		settings_load();
 	}
 
+	if (ble_init() != 0) {
+		return 0;
+	}
+
 	ble_advertising_start();
 
 	for (;;) {
