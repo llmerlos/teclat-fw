@@ -6,6 +6,7 @@
 
 #include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
+#include <zephyr/zbus/zbus.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -15,6 +16,7 @@
 #include <dk_buttons_and_leds.h>
 
 #include "ble.h"
+#include "events.h"
 #include "hid.h"
 
 #define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
@@ -125,3 +127,22 @@ bool ble_is_advertising(void)
 {
 	return is_adv;
 }
+
+static void ble_on_intent(const struct zbus_channel *chan)
+{
+	const struct app_sys_intent *intent = zbus_chan_const_msg(chan);
+
+	switch (intent->kind) {
+	case APP_SYS_INTENT_HOST_SELECT:
+		printk("Intent HOST_SELECT slot=%u (not yet implemented)\n", intent->arg);
+		break;
+	case APP_SYS_INTENT_CLEAR_BONDS:
+		printk("Intent CLEAR_BONDS (not yet implemented)\n");
+		break;
+	default:
+		break;
+	}
+}
+
+ZBUS_LISTENER_DEFINE(ble_listener, ble_on_intent);
+ZBUS_CHAN_ADD_OBS(chan_sys_intent, ble_listener, 4);

@@ -1,10 +1,17 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
 #include <zephyr/sys/util.h>
 #include <zephyr/input/input.h>
 #include <zephyr/input/input_hid.h>
+#include <zephyr/zbus/zbus.h>
 
-#include "keyboard.h"
+#include "events.h"
+#include "pairing.h"
 
 #define KEYBOARD_HID_SIZE 6
+
 static struct keyboard_report_hid_t {
 	uint8_t modifiers;
 	uint8_t keycodes[KEYBOARD_HID_SIZE];
@@ -15,7 +22,18 @@ static struct keyboard_input_stack_t {
 	uint32_t keycodes[KEYBOARD_HID_SIZE];
 } kb_inputs_src;
 
-static bool kb_fn_active = false;
+static bool kb_fn_active;
+
+/* Set after a pairing-pending KEY_0/KEY_1 press is consumed as an intent;
+ * makes the matching release a no-op so it doesn't reach the HID path.
+ */
+static bool kb_pairing_release_pending;
+
+static void publish_intent(enum app_sys_intent_kind kind, uint8_t arg)
+{
+	struct app_sys_intent intent = { .kind = kind, .arg = arg };
+	(void)zbus_chan_pub(&chan_sys_intent, &intent, K_NO_WAIT);
+}
 
 static uint32_t kb_fn_mapping(uint32_t input_code, bool is_fn_active)
 {
@@ -39,18 +57,74 @@ static uint32_t kb_fn_mapping(uint32_t input_code, bool is_fn_active)
 	}
 }
 
-void kb_process_input_press(uint32_t input_code)
+/* Fn-layer system intents. Placeholders -- swap once a real keyboard
+ * layout exists. The DK overlay only wires KEY_0..KEY_3 with no Fn key,
+ * so these are dormant on this hardware for now.
+ */
+static bool kb_try_fn_intent(uint32_t input_code)
 {
-	// Fn Layer
+	if (!kb_fn_active) {
+		return false;
+	}
+
+	switch (input_code) {
+	case INPUT_KEY_0:
+		publish_intent(APP_SYS_INTENT_CLEAR_BONDS, 0);
+		return true;
+	case INPUT_KEY_1:
+		publish_intent(APP_SYS_INTENT_HOST_SELECT, 0);
+		return true;
+	case INPUT_KEY_2:
+		publish_intent(APP_SYS_INTENT_HOST_SELECT, 1);
+		return true;
+	case INPUT_KEY_3:
+		publish_intent(APP_SYS_INTENT_HOST_SELECT, 2);
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool kb_try_pairing_intent(uint32_t input_code)
+{
+	if (!pairing_is_confirm_pending()) {
+		return false;
+	}
+
+	switch (input_code) {
+	case INPUT_KEY_0:
+		publish_intent(APP_SYS_INTENT_PAIRING_ACCEPT, 0);
+		kb_pairing_release_pending = true;
+		return true;
+	case INPUT_KEY_1:
+		publish_intent(APP_SYS_INTENT_PAIRING_REJECT, 0);
+		kb_pairing_release_pending = true;
+		return true;
+	default:
+		return false;
+	}
+}
+
+static void kb_on_press(uint32_t input_code)
+{
 	if (input_code == INPUT_BTN_EXTRA) {
 		kb_fn_active = true;
 		return;
 	}
 
-	// Custom work
-	uint32_t keycode = kb_fn_mapping(input_code, kb_fn_active);
+	if (kb_try_fn_intent(input_code)) {
+		return;
+	}
 
-	// HID regular
+	if (kb_try_pairing_intent(input_code)) {
+		return;
+	}
+
+	uint32_t keycode = kb_fn_mapping(input_code, kb_fn_active);
+	if (keycode == 0) {
+		return;
+	}
+
 	uint8_t modifier = input_to_hid_modifier(keycode);
 	if (modifier != 0) {
 		kb_hid_report.modifiers |= modifier;
@@ -73,10 +147,16 @@ void kb_process_input_press(uint32_t input_code)
 	}
 }
 
-void kb_process_input_release(uint32_t input_code)
+static void kb_on_release(uint32_t input_code)
 {
 	if (input_code == INPUT_BTN_EXTRA) {
 		kb_fn_active = false;
+		return;
+	}
+
+	if (kb_pairing_release_pending &&
+	    (input_code == INPUT_KEY_0 || input_code == INPUT_KEY_1)) {
+		kb_pairing_release_pending = false;
 		return;
 	}
 
@@ -100,3 +180,17 @@ void kb_process_input_release(uint32_t input_code)
 		}
 	}
 }
+
+static void kb_on_key_event(const struct zbus_channel *chan)
+{
+	const struct app_key_event *evt = zbus_chan_const_msg(chan);
+
+	if (evt->pressed) {
+		kb_on_press(evt->code);
+	} else {
+		kb_on_release(evt->code);
+	}
+}
+
+ZBUS_LISTENER_DEFINE(kb_listener, kb_on_key_event);
+ZBUS_CHAN_ADD_OBS(chan_key_event, kb_listener, 4);

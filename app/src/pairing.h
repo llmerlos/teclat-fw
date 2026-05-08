@@ -17,8 +17,4 @@ int pairing_init(void);
  * confirmation. */
 bool pairing_is_confirm_pending(void);
 
-/* Confirm or reject the head of the pending-passkey queue. No-op if the
- * queue is empty. */
-void pairing_respond(bool accept);
-
 #endif /* APP_PAIRING_H_ */

@@ -4,10 +4,12 @@
 
 #include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
+#include <zephyr/zbus/zbus.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
 
+#include "events.h"
 #include "pairing.h"
 
 static struct k_work pairing_work;
@@ -119,7 +121,7 @@ static struct bt_conn_auth_cb conn_auth_callbacks = {
 static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {.pairing_complete = pairing_complete,
 							       .pairing_failed = pairing_failed};
 
-void pairing_respond(bool accept)
+static void pairing_respond(bool accept)
 {
 	struct pairing_data_mitm pairing_data;
 	struct bt_conn *conn;
@@ -170,3 +172,22 @@ bool pairing_is_confirm_pending(void)
 {
 	return k_msgq_num_used_get(&mitm_queue) > 0;
 }
+
+static void pairing_on_intent(const struct zbus_channel *chan)
+{
+	const struct app_sys_intent *intent = zbus_chan_const_msg(chan);
+
+	switch (intent->kind) {
+	case APP_SYS_INTENT_PAIRING_ACCEPT:
+		pairing_respond(true);
+		break;
+	case APP_SYS_INTENT_PAIRING_REJECT:
+		pairing_respond(false);
+		break;
+	default:
+		break;
+	}
+}
+
+ZBUS_LISTENER_DEFINE(pairing_listener, pairing_on_intent);
+ZBUS_CHAN_ADD_OBS(chan_sys_intent, pairing_listener, 4);
