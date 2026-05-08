@@ -18,6 +18,7 @@
 
 #include "hid.h"
 #include "ble.h"
+#include "idle.h"
 #include "pairing.h"
 
 #define ADV_LED_BLINK_INTERVAL 1000
@@ -79,6 +80,7 @@ int main(void)
 	}
 
 	ble_advertising_start();
+	idle_init();
 
 	for (;;) {
 		if (ble_is_advertising()) {

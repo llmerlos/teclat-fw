@@ -15,6 +15,15 @@ source "subsys/logging/Kconfig.template.log_config"
 
 menu "Nordic BLE HIDS Keyboard sample"
 
+config APP_IDLE_TIMEOUT_MIN
+	int "Idle timeout before system off (minutes)"
+	default 30
+	range 1 1440
+	help
+	  How long without any user activity before the keyboard enters
+	  System OFF. Wake-up sources are configured by the active input
+	  backend (e.g. button GPIOs for gpio-keys).
+
 config APP_HOST_SLOTS
 	int "Number of host slots"
 	default 3

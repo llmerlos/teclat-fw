@@ -20,6 +20,7 @@ target_sources(app PRIVATE
   src/ble.c
   src/pairing.c
   src/keyboard.c
+  src/idle.c
 )
 
 target_include_directories(app PRIVATE src)
