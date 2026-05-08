@@ -14,6 +14,7 @@ project(NONE)
 # NORDIC SDK APP START
 target_sources(app PRIVATE
   src/main.c
+  src/events.c
   src/input.c
   src/hid.c
   src/ble.c

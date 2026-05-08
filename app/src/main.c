@@ -14,10 +14,11 @@
 
 #include <zephyr/bluetooth/services/bas.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/zbus/zbus.h>
 
 #include <dk_buttons_and_leds.h>
 
-#include "input.h"
+#include "events.h"
 #include "hid.h"
 #include "ble.h"
 #include "pairing.h"
@@ -27,36 +28,41 @@
 
 #define ADV_STATUS_LED DK_LED1
 
-static void on_input_event(uint16_t code, bool pressed)
+static void on_key_event(const struct zbus_channel *chan)
 {
+	const struct app_key_event *evt = zbus_chan_const_msg(chan);
 	static bool pairing_button_latched;
 
 	/* Pairing takes priority: consume press of KEY_0/KEY_1 when a
 	 * passkey is pending; latch so we also swallow the matching release.
 	 */
 	if (pairing_is_confirm_pending()) {
-		if (pressed && code == INPUT_KEY_0) {
+		if (evt->pressed && evt->code == INPUT_KEY_0) {
 			pairing_button_latched = true;
 			pairing_respond(true);
 			return;
 		}
-		if (pressed && code == INPUT_KEY_1) {
+		if (evt->pressed && evt->code == INPUT_KEY_1) {
 			pairing_button_latched = true;
 			pairing_respond(false);
 			return;
 		}
 	}
-	if (pairing_button_latched && !pressed && (code == INPUT_KEY_0 || code == INPUT_KEY_1)) {
+	if (pairing_button_latched && !evt->pressed &&
+	    (evt->code == INPUT_KEY_0 || evt->code == INPUT_KEY_1)) {
 		pairing_button_latched = false;
 		return;
 	}
 
-	if (pressed) {
-		kb_process_input_press(code);
+	if (evt->pressed) {
+		kb_process_input_press(evt->code);
 	} else {
-		kb_process_input_release(code);
+		kb_process_input_release(evt->code);
 	}
 }
+
+ZBUS_LISTENER_DEFINE(input_listener, on_key_event);
+ZBUS_CHAN_ADD_OBS(chan_key_event, input_listener, 4);
 
 static void configure_leds(void)
 {
@@ -89,7 +95,6 @@ int main(void)
 	printk("Starting Bluetooth Peripheral HIDS keyboard sample\n");
 
 	configure_leds();
-	app_input_register(on_input_event);
 
 	if (pairing_init() != 0) {
 		return 0;
