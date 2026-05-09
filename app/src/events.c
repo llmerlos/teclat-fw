@@ -6,29 +6,29 @@
 
 #include "events.h"
 
-ZBUS_CHAN_DEFINE(chan_key_event,
-		 struct app_key_event,
+ZBUS_CHAN_DEFINE(chan_key,
+		 struct evt_key,
 		 NULL,
 		 NULL,
 		 ZBUS_OBSERVERS_EMPTY,
 		 ZBUS_MSG_INIT(0));
 
 ZBUS_CHAN_DEFINE(chan_activity,
-		 struct app_activity_event,
+		 struct evt_activity,
 		 NULL,
 		 NULL,
 		 ZBUS_OBSERVERS_EMPTY,
 		 ZBUS_MSG_INIT(0));
 
 ZBUS_CHAN_DEFINE(chan_sys_intent,
-		 struct app_sys_intent,
+		 struct evt_sys_intent,
 		 NULL,
 		 NULL,
 		 ZBUS_OBSERVERS_EMPTY,
 		 ZBUS_MSG_INIT(0));
 
 ZBUS_CHAN_DEFINE(chan_hid_report,
-		 struct app_hid_report,
+		 struct evt_hid_report,
 		 NULL,
 		 NULL,
 		 ZBUS_OBSERVERS_EMPTY,

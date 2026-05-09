@@ -23,7 +23,7 @@
 #include "events.h"
 #include "hid.h"
 
-LOG_MODULE_REGISTER(app_hid, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(hid, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define BASE_USB_HID_SPEC_VERSION 0x0101
 
@@ -81,21 +81,21 @@ enum {
 };
 
 /* HIDS instance. */
-BT_HIDS_DEF(hids_obj, OUTPUT_REPORT_MAX_LEN, INPUT_REPORT_KEYS_MAX_LEN);
+BT_HIDS_DEF(hid_obj, OUTPUT_REPORT_MAX_LEN, INPUT_REPORT_KEYS_MAX_LEN);
 
-static struct conn_mode {
+static struct hid_client_state {
 	struct bt_conn *conn;
 	bool in_boot_mode;
 	uint8_t identity_id;
 } hid_clients[CONFIG_BT_HIDS_MAX_CLIENT_COUNT];
 
-static void caps_lock_handler(const struct bt_hids_rep *rep)
+static void hid_caps_lock_handler(const struct bt_hids_rep *rep)
 {
 	uint8_t report_val = ((*rep->data) & OUTPUT_REPORT_BIT_MASK_CAPS_LOCK) ? 1 : 0;
 	dk_set_led(LED_CAPS_LOCK, report_val);
 }
 
-static void hids_outp_rep_handler(struct bt_hids_rep *rep, struct bt_conn *conn, bool write)
+static void hid_outp_rep_handler(struct bt_hids_rep *rep, struct bt_conn *conn, bool write)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -106,10 +106,10 @@ static void hids_outp_rep_handler(struct bt_hids_rep *rep, struct bt_conn *conn,
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	LOG_DBG("Output report received from %s", addr);
-	caps_lock_handler(rep);
+	hid_caps_lock_handler(rep);
 }
 
-static void hids_boot_kb_outp_rep_handler(struct bt_hids_rep *rep, struct bt_conn *conn, bool write)
+static void hid_boot_kb_outp_rep_handler(struct bt_hids_rep *rep, struct bt_conn *conn, bool write)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -120,10 +120,10 @@ static void hids_boot_kb_outp_rep_handler(struct bt_hids_rep *rep, struct bt_con
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	LOG_DBG("Boot keyboard output report received from %s", addr);
-	caps_lock_handler(rep);
+	hid_caps_lock_handler(rep);
 }
 
-static void hids_pm_evt_handler(enum bt_hids_pm_evt evt, struct bt_conn *conn)
+static void hid_pm_evt_handler(enum bt_hids_pm_evt evt, struct bt_conn *conn)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 	size_t i;
@@ -157,12 +157,12 @@ static void hids_pm_evt_handler(enum bt_hids_pm_evt evt, struct bt_conn *conn)
 	}
 }
 
-void ble_hid_init(void)
+void hid_init(void)
 {
 	int err;
-	struct bt_hids_init_param hids_init_obj = {0};
-	struct bt_hids_inp_rep *hids_inp_rep;
-	struct bt_hids_outp_feat_rep *hids_outp_rep;
+	struct bt_hids_init_param init_obj = {0};
+	struct bt_hids_inp_rep *inp_rep;
+	struct bt_hids_outp_feat_rep *outp_rep;
 
 	static const uint8_t report_map[] = {
 		0x05, 0x01, /* Usage Page (Generic Desktop) */
@@ -214,43 +214,43 @@ void ble_hid_init(void)
 		0xC0 /* End Collection (Application) */
 	};
 
-	hids_init_obj.rep_map.data = report_map;
-	hids_init_obj.rep_map.size = sizeof(report_map);
+	init_obj.rep_map.data = report_map;
+	init_obj.rep_map.size = sizeof(report_map);
 
-	hids_init_obj.info.bcd_hid = BASE_USB_HID_SPEC_VERSION;
-	hids_init_obj.info.b_country_code = 0x00;
-	hids_init_obj.info.flags = (BT_HIDS_REMOTE_WAKE | BT_HIDS_NORMALLY_CONNECTABLE);
+	init_obj.info.bcd_hid = BASE_USB_HID_SPEC_VERSION;
+	init_obj.info.b_country_code = 0x00;
+	init_obj.info.flags = (BT_HIDS_REMOTE_WAKE | BT_HIDS_NORMALLY_CONNECTABLE);
 
-	hids_inp_rep = &hids_init_obj.inp_rep_group_init.reports[INPUT_REP_KEYS_IDX];
-	hids_inp_rep->size = INPUT_REPORT_KEYS_MAX_LEN;
-	hids_inp_rep->id = INPUT_REP_KEYS_REF_ID;
-	hids_init_obj.inp_rep_group_init.cnt++;
+	inp_rep = &init_obj.inp_rep_group_init.reports[INPUT_REP_KEYS_IDX];
+	inp_rep->size = INPUT_REPORT_KEYS_MAX_LEN;
+	inp_rep->id = INPUT_REP_KEYS_REF_ID;
+	init_obj.inp_rep_group_init.cnt++;
 
-	hids_outp_rep = &hids_init_obj.outp_rep_group_init.reports[OUTPUT_REP_KEYS_IDX];
-	hids_outp_rep->size = OUTPUT_REPORT_MAX_LEN;
-	hids_outp_rep->id = OUTPUT_REP_KEYS_REF_ID;
-	hids_outp_rep->handler = hids_outp_rep_handler;
-	hids_init_obj.outp_rep_group_init.cnt++;
+	outp_rep = &init_obj.outp_rep_group_init.reports[OUTPUT_REP_KEYS_IDX];
+	outp_rep->size = OUTPUT_REPORT_MAX_LEN;
+	outp_rep->id = OUTPUT_REP_KEYS_REF_ID;
+	outp_rep->handler = hid_outp_rep_handler;
+	init_obj.outp_rep_group_init.cnt++;
 
-	hids_init_obj.is_kb = true;
-	hids_init_obj.boot_kb_outp_rep_handler = hids_boot_kb_outp_rep_handler;
-	hids_init_obj.pm_evt_handler = hids_pm_evt_handler;
+	init_obj.is_kb = true;
+	init_obj.boot_kb_outp_rep_handler = hid_boot_kb_outp_rep_handler;
+	init_obj.pm_evt_handler = hid_pm_evt_handler;
 
-	err = bt_hids_init(&hids_obj, &hids_init_obj);
+	err = bt_hids_init(&hid_obj, &init_obj);
 	__ASSERT(err == 0, "HIDS initialization failed\n");
 }
 
 static void hid_on_report(const struct zbus_channel *chan)
 {
-	const struct app_hid_report *r = zbus_chan_const_msg(chan);
+	const struct evt_hid_report *r = zbus_chan_const_msg(chan);
 	uint8_t data[INPUT_REPORT_KEYS_MAX_LEN];
 	uint8_t active = ble_get_active_host();
 
-	BUILD_ASSERT(KEY_PRESS_MAX == APP_HID_KEYCODES);
+	BUILD_ASSERT(KEY_PRESS_MAX == EVT_HID_KEYCODES);
 
 	data[0] = r->modifiers;
 	data[1] = 0;
-	memcpy(&data[2], r->keycodes, APP_HID_KEYCODES);
+	memcpy(&data[2], r->keycodes, EVT_HID_KEYCODES);
 
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {
 		struct bt_conn *conn = hid_clients[i].conn;
@@ -261,10 +261,10 @@ static void hid_on_report(const struct zbus_channel *chan)
 		}
 
 		if (hid_clients[i].in_boot_mode) {
-			err = bt_hids_boot_kb_inp_rep_send(&hids_obj, conn, data, sizeof(data),
+			err = bt_hids_boot_kb_inp_rep_send(&hid_obj, conn, data, sizeof(data),
 							   NULL);
 		} else {
-			err = bt_hids_inp_rep_send(&hids_obj, conn, INPUT_REP_KEYS_IDX, data,
+			err = bt_hids_inp_rep_send(&hid_obj, conn, INPUT_REP_KEYS_IDX, data,
 						   sizeof(data), NULL);
 		}
 		if (err) {
@@ -276,12 +276,12 @@ static void hid_on_report(const struct zbus_channel *chan)
 ZBUS_LISTENER_DEFINE(hid_listener, hid_on_report);
 ZBUS_CHAN_ADD_OBS(chan_hid_report, hid_listener, 4);
 
-int ble_hid_on_connected(struct bt_conn *conn)
+int hid_on_connected(struct bt_conn *conn)
 {
 	struct bt_conn_info info;
 	int err;
 
-	err = bt_hids_connected(&hids_obj, conn);
+	err = bt_hids_connected(&hid_obj, conn);
 	if (err) {
 		LOG_ERR("Failed to notify HID service about connection (err %d)", err);
 		return err;
@@ -300,11 +300,11 @@ int ble_hid_on_connected(struct bt_conn *conn)
 	return 0;
 }
 
-int ble_hid_on_disconnected(struct bt_conn *conn)
+int hid_on_disconnected(struct bt_conn *conn)
 {
 	int err;
 
-	err = bt_hids_disconnected(&hids_obj, conn);
+	err = bt_hids_disconnected(&hid_obj, conn);
 	if (err) {
 		LOG_ERR("Failed to notify HID service about disconnection (err %d)", err);
 	}
@@ -318,7 +318,7 @@ int ble_hid_on_disconnected(struct bt_conn *conn)
 	return err;
 }
 
-bool ble_hid_has_active_clients(void)
+bool hid_has_active_clients(void)
 {
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {
 		if (hid_clients[i].conn) {
@@ -328,7 +328,7 @@ bool ble_hid_has_active_clients(void)
 	return false;
 }
 
-size_t ble_hid_active_client_count(void)
+size_t hid_active_client_count(void)
 {
 	size_t n = 0;
 	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {

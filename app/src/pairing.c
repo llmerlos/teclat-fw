@@ -12,36 +12,36 @@
 #include "events.h"
 #include "pairing.h"
 
-LOG_MODULE_REGISTER(app_pairing, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(pair, CONFIG_LOG_DEFAULT_LEVEL);
 
-static struct k_work pairing_work;
-struct pairing_data_mitm {
+static struct k_work pair_work;
+struct pair_data_mitm {
 	struct bt_conn *conn;
 	unsigned int passkey;
 };
 
-K_MSGQ_DEFINE(mitm_queue, sizeof(struct pairing_data_mitm), CONFIG_BT_HIDS_MAX_CLIENT_COUNT, 4);
+K_MSGQ_DEFINE(pair_mitm_queue, sizeof(struct pair_data_mitm), CONFIG_BT_HIDS_MAX_CLIENT_COUNT, 4);
 
-static void pairing_process(struct k_work *work)
+static void pair_process(struct k_work *work)
 {
 	ARG_UNUSED(work);
 	int err;
-	struct pairing_data_mitm pairing_data;
+	struct pair_data_mitm pair_data;
 
 	char addr[BT_ADDR_LE_STR_LEN];
 
-	err = k_msgq_peek(&mitm_queue, &pairing_data);
+	err = k_msgq_peek(&pair_mitm_queue, &pair_data);
 	if (err) {
 		return;
 	}
 
-	bt_addr_le_to_str(bt_conn_get_dst(pairing_data.conn), addr, sizeof(addr));
+	bt_addr_le_to_str(bt_conn_get_dst(pair_data.conn), addr, sizeof(addr));
 
-	LOG_INF("Passkey for %s: %06u", addr, pairing_data.passkey);
+	LOG_INF("Passkey for %s: %06u", addr, pair_data.passkey);
 	LOG_INF("Press Button 0 to confirm, Button 1 to reject.");
 }
 
-static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
+static void pair_auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -50,16 +50,16 @@ static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
 	LOG_INF("Passkey for %s: %06u", addr, passkey);
 }
 
-static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
+static void pair_auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
 {
 	int err;
 
-	struct pairing_data_mitm pairing_data;
+	struct pair_data_mitm pair_data;
 
-	pairing_data.conn = bt_conn_ref(conn);
-	pairing_data.passkey = passkey;
+	pair_data.conn = bt_conn_ref(conn);
+	pair_data.passkey = passkey;
 
-	err = k_msgq_put(&mitm_queue, &pairing_data, K_NO_WAIT);
+	err = k_msgq_put(&pair_mitm_queue, &pair_data, K_NO_WAIT);
 	if (err) {
 		LOG_WRN("Pairing queue is full. Purge previous data.");
 	}
@@ -70,12 +70,12 @@ static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
 	 * the same time. Passkey confirmation for next devices will
 	 * be proccess from queue after handling the earlier ones.
 	 */
-	if (k_msgq_num_used_get(&mitm_queue) == 1) {
-		k_work_submit(&pairing_work);
+	if (k_msgq_num_used_get(&pair_mitm_queue) == 1) {
+		k_work_submit(&pair_work);
 	}
 }
 
-static void auth_cancel(struct bt_conn *conn)
+static void pair_auth_cancel(struct bt_conn *conn)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -84,7 +84,7 @@ static void auth_cancel(struct bt_conn *conn)
 	LOG_WRN("Pairing cancelled: %s", addr);
 }
 
-static void pairing_complete(struct bt_conn *conn, bool bonded)
+static void pair_complete(struct bt_conn *conn, bool bonded)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -93,18 +93,18 @@ static void pairing_complete(struct bt_conn *conn, bool bonded)
 	LOG_INF("Pairing completed: %s, bonded: %d", addr, bonded);
 }
 
-static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
+static void pair_failed(struct bt_conn *conn, enum bt_security_err reason)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
-	struct pairing_data_mitm pairing_data;
+	struct pair_data_mitm pair_data;
 
-	if (k_msgq_peek(&mitm_queue, &pairing_data) != 0) {
+	if (k_msgq_peek(&pair_mitm_queue, &pair_data) != 0) {
 		return;
 	}
 
-	if (pairing_data.conn == conn) {
-		bt_conn_unref(pairing_data.conn);
-		k_msgq_get(&mitm_queue, &pairing_data, K_NO_WAIT);
+	if (pair_data.conn == conn) {
+		bt_conn_unref(pair_data.conn);
+		k_msgq_get(&pair_mitm_queue, &pair_data, K_NO_WAIT);
 	}
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
@@ -113,25 +113,25 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 		bt_security_err_to_str(reason));
 }
 
-static struct bt_conn_auth_cb conn_auth_callbacks = {
-	.passkey_display = auth_passkey_display,
-	.passkey_confirm = auth_passkey_confirm,
-	.cancel = auth_cancel,
+static struct bt_conn_auth_cb pair_conn_auth_cbs = {
+	.passkey_display = pair_auth_passkey_display,
+	.passkey_confirm = pair_auth_passkey_confirm,
+	.cancel = pair_auth_cancel,
 };
 
-static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {.pairing_complete = pairing_complete,
-							       .pairing_failed = pairing_failed};
+static struct bt_conn_auth_info_cb pair_conn_auth_info_cbs = {.pairing_complete = pair_complete,
+							      .pairing_failed = pair_failed};
 
-static void pairing_respond(bool accept)
+static void pair_respond(bool accept)
 {
-	struct pairing_data_mitm pairing_data;
+	struct pair_data_mitm pair_data;
 	struct bt_conn *conn;
 
-	if (k_msgq_get(&mitm_queue, &pairing_data, K_NO_WAIT) != 0) {
+	if (k_msgq_get(&pair_mitm_queue, &pair_data, K_NO_WAIT) != 0) {
 		return;
 	}
 
-	conn = pairing_data.conn;
+	conn = pair_data.conn;
 
 	if (accept) {
 		bt_conn_auth_passkey_confirm(conn);
@@ -141,26 +141,26 @@ static void pairing_respond(bool accept)
 		LOG_INF("Numeric Reject, conn %p", (void *)conn);
 	}
 
-	bt_conn_unref(pairing_data.conn);
+	bt_conn_unref(pair_data.conn);
 
-	if (k_msgq_num_used_get(&mitm_queue)) {
-		k_work_submit(&pairing_work);
+	if (k_msgq_num_used_get(&pair_mitm_queue)) {
+		k_work_submit(&pair_work);
 	}
 }
 
-int pairing_init(void)
+int pair_init(void)
 {
 	int err;
 
-	k_work_init(&pairing_work, pairing_process);
+	k_work_init(&pair_work, pair_process);
 
-	err = bt_conn_auth_cb_register(&conn_auth_callbacks);
+	err = bt_conn_auth_cb_register(&pair_conn_auth_cbs);
 	if (err) {
 		LOG_ERR("Failed to register authorization callbacks (err %d)", err);
 		return err;
 	}
 
-	err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
+	err = bt_conn_auth_info_cb_register(&pair_conn_auth_info_cbs);
 	if (err) {
 		LOG_ERR("Failed to register authorization info callbacks (err %d)", err);
 		return err;
@@ -169,26 +169,26 @@ int pairing_init(void)
 	return 0;
 }
 
-bool pairing_is_confirm_pending(void)
+bool pair_is_confirm_pending(void)
 {
-	return k_msgq_num_used_get(&mitm_queue) > 0;
+	return k_msgq_num_used_get(&pair_mitm_queue) > 0;
 }
 
-static void pairing_on_intent(const struct zbus_channel *chan)
+static void pair_on_intent(const struct zbus_channel *chan)
 {
-	const struct app_sys_intent *intent = zbus_chan_const_msg(chan);
+	const struct evt_sys_intent *intent = zbus_chan_const_msg(chan);
 
 	switch (intent->kind) {
-	case APP_SYS_INTENT_PAIRING_ACCEPT:
-		pairing_respond(true);
+	case EVT_SYS_INTENT_PAIRING_ACCEPT:
+		pair_respond(true);
 		break;
-	case APP_SYS_INTENT_PAIRING_REJECT:
-		pairing_respond(false);
+	case EVT_SYS_INTENT_PAIRING_REJECT:
+		pair_respond(false);
 		break;
 	default:
 		break;
 	}
 }
 
-ZBUS_LISTENER_DEFINE(pairing_listener, pairing_on_intent);
-ZBUS_CHAN_ADD_OBS(chan_sys_intent, pairing_listener, 4);
+ZBUS_LISTENER_DEFINE(pair_listener, pair_on_intent);
+ZBUS_CHAN_ADD_OBS(chan_sys_intent, pair_listener, 4);

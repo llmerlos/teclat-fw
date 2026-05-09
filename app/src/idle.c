@@ -11,20 +11,20 @@
 #include "idle.h"
 #include "input.h"
 
-LOG_MODULE_REGISTER(app_idle, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(idle, CONFIG_LOG_DEFAULT_LEVEL);
 
 #define IDLE_TIMEOUT K_MINUTES(CONFIG_APP_IDLE_TIMEOUT_MIN)
 
 static void idle_enter_sleep(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(idle_work, idle_enter_sleep);
 
-static void on_activity(const struct zbus_channel *chan)
+static void idle_on_activity(const struct zbus_channel *chan)
 {
 	ARG_UNUSED(chan);
 	(void)k_work_reschedule(&idle_work, IDLE_TIMEOUT);
 }
 
-ZBUS_LISTENER_DEFINE(idle_listener, on_activity);
+ZBUS_LISTENER_DEFINE(idle_listener, idle_on_activity);
 ZBUS_CHAN_ADD_OBS(chan_activity, idle_listener, 4);
 
 static void idle_enter_sleep(struct k_work *work)
@@ -32,7 +32,7 @@ static void idle_enter_sleep(struct k_work *work)
 	ARG_UNUSED(work);
 	int err;
 
-	err = input_prepare_for_sleep();
+	err = inp_prepare_for_sleep();
 	if (err) {
 		LOG_ERR("Wake-source config failed (err %d), retrying later", err);
 		(void)k_work_reschedule(&idle_work, IDLE_TIMEOUT);

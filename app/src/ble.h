@@ -2,8 +2,8 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#ifndef APP_BLE_H_
-#define APP_BLE_H_
+#ifndef BLE_H_
+#define BLE_H_
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -19,4 +19,4 @@ void ble_advertising_start(void);
 /* Slot index of the currently active host (0..APP_HOST_SLOTS-1). */
 uint8_t ble_get_active_host(void);
 
-#endif /* APP_BLE_H_ */
+#endif /* BLE_H_ */

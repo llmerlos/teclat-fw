@@ -13,21 +13,21 @@
 #include "events.h"
 #include "input.h"
 
-LOG_MODULE_REGISTER(app_input, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(inp, CONFIG_LOG_DEFAULT_LEVEL);
 
 /* Input source selected via the `app,input-source` DT chosen. Falls back to
  * the `buttons` node label so existing overlays keep working. To swap the
  * physical input (matrix kscan, ADC threshold driver, encoder, ...), point
  * the chosen at a different node — no app code changes required apart from
- * extending input_prepare_for_sleep() with the matching wake-source setup.
+ * extending inp_prepare_for_sleep() with the matching wake-source setup.
  */
 #if DT_HAS_CHOSEN(app_input_source)
-#define INPUT_SRC_NODE DT_CHOSEN(app_input_source)
+#define INP_SRC_NODE DT_CHOSEN(app_input_source)
 #else
-#define INPUT_SRC_NODE DT_NODELABEL(buttons)
+#define INP_SRC_NODE DT_NODELABEL(buttons)
 #endif
 
-static void on_input_cb(struct input_event *evt, void *user_data)
+static void inp_on_event(struct input_event *evt, void *user_data)
 {
 	ARG_UNUSED(user_data);
 
@@ -35,34 +35,34 @@ static void on_input_cb(struct input_event *evt, void *user_data)
 		return;
 	}
 
-	struct app_key_event ke = {
+	struct evt_key ke = {
 		.code = evt->code,
 		.pressed = evt->value != 0,
 	};
-	(void)zbus_chan_pub(&chan_key_event, &ke, K_NO_WAIT);
+	(void)zbus_chan_pub(&chan_key, &ke, K_NO_WAIT);
 
-	struct app_activity_event ae = { .source = 0 };
+	struct evt_activity ae = { .source = 0 };
 	(void)zbus_chan_pub(&chan_activity, &ae, K_NO_WAIT);
 }
 
-INPUT_CALLBACK_DEFINE(DEVICE_DT_GET(INPUT_SRC_NODE), on_input_cb, NULL);
+INPUT_CALLBACK_DEFINE(DEVICE_DT_GET(INP_SRC_NODE), inp_on_event, NULL);
 
-#if DT_NODE_HAS_COMPAT(INPUT_SRC_NODE, gpio_keys)
+#if DT_NODE_HAS_COMPAT(INP_SRC_NODE, gpio_keys)
 
-#define WAKE_SPEC_INIT(node_id) GPIO_DT_SPEC_GET(node_id, gpios),
+#define INP_WAKE_SPEC_INIT(node_id) GPIO_DT_SPEC_GET(node_id, gpios),
 
-static const struct gpio_dt_spec wake_specs[] = {
-	DT_FOREACH_CHILD(INPUT_SRC_NODE, WAKE_SPEC_INIT)
+static const struct gpio_dt_spec inp_wake_specs[] = {
+	DT_FOREACH_CHILD(INP_SRC_NODE, INP_WAKE_SPEC_INIT)
 };
 
-int input_prepare_for_sleep(void)
+int inp_prepare_for_sleep(void)
 {
-	for (size_t i = 0; i < ARRAY_SIZE(wake_specs); i++) {
-		int err = gpio_pin_interrupt_configure_dt(&wake_specs[i],
+	for (size_t i = 0; i < ARRAY_SIZE(inp_wake_specs); i++) {
+		int err = gpio_pin_interrupt_configure_dt(&inp_wake_specs[i],
 							  GPIO_INT_LEVEL_ACTIVE);
 		if (err) {
 			LOG_ERR("wake config pin %u failed (err %d)",
-				wake_specs[i].pin, err);
+				inp_wake_specs[i].pin, err);
 			return err;
 		}
 	}
@@ -71,7 +71,7 @@ int input_prepare_for_sleep(void)
 
 #else  /* unsupported input backend */
 
-int input_prepare_for_sleep(void)
+int inp_prepare_for_sleep(void)
 {
 	LOG_WRN("No wake-source implementation for the configured input backend");
 	return -ENOTSUP;

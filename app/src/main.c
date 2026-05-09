@@ -19,7 +19,7 @@
 #include "idle.h"
 #include "pairing.h"
 
-LOG_MODULE_REGISTER(app_main, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 
 static void configure_leds(void)
 {
@@ -38,11 +38,11 @@ int main(void)
 
 	configure_leds();
 
-	if (pairing_init() != 0) {
+	if (pair_init() != 0) {
 		return 0;
 	}
 
-	ble_hid_init();
+	hid_init();
 
 	err = bt_enable(NULL);
 	if (err) {
@@ -62,7 +62,7 @@ int main(void)
 
 	ble_advertising_start();
 	idle_init();
-	battery_init();
+	bat_init();
 
 	return 0;
 }
